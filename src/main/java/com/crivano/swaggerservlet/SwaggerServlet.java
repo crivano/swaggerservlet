@@ -1,7 +1,10 @@
 package com.crivano.swaggerservlet;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -11,6 +14,32 @@ import com.crivano.restservlet.IRestAction;
 import com.crivano.restservlet.RestServlet;
 
 public class SwaggerServlet extends RestServlet {
+	@Override
+	public void doGet(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
+
+		// Return the swagger.yaml that is placed at
+		// src/main/webapp/{servletpath}/swagger.yaml
+		//
+		if (req.getPathInfo().equals("/swagger.yaml")) {
+			InputStream is = this.getServletContext().getResourceAsStream(
+					req.getServletPath() + req.getPathInfo());
+			String sSwagger = convertStreamToString(is);
+			byte[] ab = sSwagger.getBytes();
+			resp.setContentType("text/x-yaml");
+			resp.setContentLength(ab.length);
+			resp.getOutputStream().write(ab);
+			resp.getOutputStream().flush();
+		} else
+			super.doGet(req, resp);
+	}
+
+	static String convertStreamToString(java.io.InputStream is) {
+		try (java.util.Scanner s = new java.util.Scanner(is)) {
+			return s.useDelimiter("\\A").hasNext() ? s.next() : "";
+		}
+	}
+
 	private static final long serialVersionUID = 4436503480265700847L;
 
 	private Swagger swagger = null;
