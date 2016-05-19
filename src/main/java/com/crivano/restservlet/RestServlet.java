@@ -50,6 +50,12 @@ public abstract class RestServlet extends HttpServlet {
 	}
 
 	@Override
+	public void doPut(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
+		doPost(req, resp);
+	}
+
+	@Override
 	public void doOptions(HttpServletRequest request,
 			HttpServletResponse response) throws ServletException, IOException {
 		corsHeaders(response);
