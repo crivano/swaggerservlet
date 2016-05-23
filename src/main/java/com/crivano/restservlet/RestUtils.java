@@ -7,7 +7,9 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
@@ -22,8 +24,6 @@ import org.json.JSONObject;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.async.Callback;
-import com.mashape.unirest.http.exceptions.UnirestException;
 
 public class RestUtils {
 	private static final Logger log = Logger.getLogger(RestUtils.class
@@ -89,6 +89,48 @@ public class RestUtils {
 		return body;
 	}
 
+	public static JSONObject getJsonObject(String context, String url,
+			String... params) throws Exception {
+		if (params != null) {
+			StringBuilder sb = new StringBuilder(url);
+			sb.append(url.contains("?") ? "&" : "?");
+
+			for (int i = 0; i < params.length; i += 2) {
+				if (!"?".equals(sb.substring(sb.length())))
+					sb.append("&");
+				sb.append(params[i]);
+				sb.append("=");
+				sb.append(URLEncoder.encode(params[i + 1], "UTF-8"));
+			}
+
+			url = sb.toString();
+		}
+
+		if (context != null)
+			log.info(context + " url: " + url);
+
+		JSONObject o = null;
+		try {
+			final HttpResponse<JsonNode> jsonResponse = Unirest.get(url)
+					.asJson();
+
+			o = jsonResponse.getBody().getObject();
+		} catch (Exception ex) {
+			String errmsg = messageAsString(ex);
+			String errstack = stackAsString(ex);
+			throw new RestException(errmsg, null, null, context);
+		}
+
+		if (context != null)
+			log.info(context + " resp: " + o.toString(3));
+
+		String error = o.optString("error", null);
+		if (error != null)
+			throw new Exception(error);
+
+		return o;
+	}
+
 	public static JSONObject getJsonObjectFromURL(URL url, String context)
 			throws Exception {
 		if (context != null)
@@ -141,6 +183,67 @@ public class RestUtils {
 			throw new RestException(error, req, o, context);
 
 		return o;
+	}
+
+	public static JSONObject getJsonObjectFromJsonPut(URL url, JSONObject req,
+			String context) throws Exception {
+		if (context != null) {
+			log.info(context + " url: " + url + " req: " + req.toString(3));
+		}
+
+		JSONObject o = null;
+		try {
+			final HttpResponse<JsonNode> jsonResponse = Unirest
+					.put(url.toString()).body(new JsonNode(req.toString()))
+					.asJson();
+			o = jsonResponse.getBody().getObject();
+		} catch (Exception ex) {
+			String errmsg = messageAsString(ex);
+			String errstack = stackAsString(ex);
+			throw new RestException(errmsg, req, null, context);
+		}
+		if (context != null)
+			log.info(context + " resp: " + o.toString(3));
+
+		String error = o.optString("error", null);
+		if (error != null)
+			throw new RestException(error, req, o, context);
+
+		return o;
+	}
+
+	public static Future getJsonObjectFromJsonGetAsync(URL url, JSONObject req,
+			String context, final RestAsyncCallback callback) throws Exception {
+		if (context != null) {
+			log.info(context + " url: " + url + " req: " + req.toString(3));
+		}
+
+		try {
+			String u = url.toString();
+			StringBuilder sb = new StringBuilder(u);
+			sb.append(u.contains("?") ? "&" : "?");
+
+			Iterator<?> keys = req.keys();
+
+			while (keys.hasNext()) {
+				if (!"?".equals(sb.substring(sb.length())))
+					sb.append("&");
+				String key = (String) keys.next();
+				if (req.get(key) instanceof String) {
+					sb.append(key);
+					sb.append("=");
+					sb.append(URLEncoder.encode(req.getString(key), "UTF-8"));
+				}
+			}
+			url = new URL(sb.toString());
+
+			return Unirest.get(url.toString()).asJsonAsync(
+					new RestLoggingCallback(callback, req, context, log));
+		} catch (Exception ex) {
+			String errmsg = messageAsString(ex);
+			String errstack = stackAsString(ex);
+			throw new RestException(errmsg, req, null, context);
+		}
 	}
 
 	public static Future getJsonObjectFromJsonPostAsync(URL url,
