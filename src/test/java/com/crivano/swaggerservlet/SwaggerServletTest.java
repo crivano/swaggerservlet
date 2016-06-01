@@ -40,7 +40,7 @@ public class SwaggerServletTest extends TestCase {
 				"swagger.yaml"));
 
 		ss.setSwagger(sv);
-		ss.setActionPackage("br.jus.trf2.restservlet.swagger");
+		ss.setActionPackage("com.crivano.swaggerservlet");
 	}
 
 	public void testCamelCase_Simple_Success() throws JSONException {
@@ -54,6 +54,7 @@ public class SwaggerServletTest extends TestCase {
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
+		ss.prepare(request, null, req, resp);
 		ss.run(request, null, req, resp);
 
 		assertEquals("{\"color\":\"white\"}", resp.toString());
@@ -67,6 +68,7 @@ public class SwaggerServletTest extends TestCase {
 		when(request.getPathInfo()).thenReturn("/v2/pet/456");
 
 		try {
+			ss.prepare(request, null, req, resp);
 			ss.run(request, null, req, resp);
 			assertTrue(false);
 		} catch (Exception ex) {

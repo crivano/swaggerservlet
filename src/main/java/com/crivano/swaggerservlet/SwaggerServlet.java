@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONObject;
 
+import com.crivano.restservlet.ICacheableRestAction;
 import com.crivano.restservlet.IRestAction;
 import com.crivano.restservlet.RestServlet;
 
@@ -44,12 +45,21 @@ public class SwaggerServlet extends RestServlet {
 
 	private Swagger swagger = null;
 	private String actionpackage = null;
-	private ThreadLocal<String> currentContext = new ThreadLocal<String>();
+
+	private class Prepared {
+		IRestAction action;
+		String context;
+		boolean cacheable;
+	}
+
+	private ThreadLocal<Prepared> current = new ThreadLocal<Prepared>();
 
 	@Override
-	protected void run(HttpServletRequest request,
+	protected void prepare(HttpServletRequest request,
 			HttpServletResponse response, JSONObject req, JSONObject resp)
 			throws Exception {
+		Prepared p = new Prepared();
+
 		String method = request.getMethod().toLowerCase();
 		String path = swagger.checkRequest(request.getPathInfo(), method, req);
 
@@ -57,13 +67,21 @@ public class SwaggerServlet extends RestServlet {
 
 		Class<?> clazz = Class.forName(actionpackage + "." + path);
 		Constructor<?> ctor = clazz.getConstructor();
-		IRestAction action = (IRestAction) ctor.newInstance();
+		p.action = (IRestAction) ctor.newInstance();
 
-		currentContext.set(action.getContext());
+		p.context = p.action.getContext();
+		p.cacheable = p.action instanceof ICacheableRestAction;
 
-		action.run(request, response, req, resp);
+		current.set(p);
+	}
 
-		action = null;
+	@Override
+	protected void run(HttpServletRequest request,
+			HttpServletResponse response, JSONObject req, JSONObject resp)
+			throws Exception {
+		Prepared p = current.get();
+
+		p.action.run(request, response, req, resp);
 	}
 
 	public String toCamelCase(String path) {
@@ -81,8 +99,20 @@ public class SwaggerServlet extends RestServlet {
 
 	@Override
 	protected String getContext() {
-		String context = currentContext.get();
+		Prepared prepared = current.get();
+		if (prepared == null)
+			return null;
+		String context = prepared.context;
 		return context;
+	}
+
+	@Override
+	protected boolean isCacheable() {
+		Prepared prepared = current.get();
+		if (prepared == null)
+			return false;
+		Boolean cacheable = prepared.cacheable;
+		return cacheable;
 	}
 
 	@Override

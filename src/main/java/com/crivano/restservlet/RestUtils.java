@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -56,6 +57,17 @@ public class RestUtils {
 		response.getWriter().println(s);
 	}
 
+	public static void writeJsonRespFromCache(HttpServletResponse response,
+			String resp, String context, String service) throws JSONException,
+			IOException {
+		if (context != null)
+			log.info(context + " resp from cache: " + resp);
+
+		response.setContentType("application/json; charset=UTF-8");
+		response.setCharacterEncoding("UTF-8");
+		response.getWriter().println(resp);
+	}
+
 	public static String getBody(HttpServletRequest request) throws IOException {
 
 		String body = null;
@@ -96,6 +108,8 @@ public class RestUtils {
 			sb.append(url.contains("?") ? "&" : "?");
 
 			for (int i = 0; i < params.length; i += 2) {
+				if (params[i + 1] == null)
+					continue;
 				if (!"?".equals(sb.substring(sb.length())))
 					sb.append("&");
 				sb.append(params[i]);
@@ -111,6 +125,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
+			Unirest.setTimeouts(5000, 20000);
 			final HttpResponse<JsonNode> jsonResponse = Unirest.get(url)
 					.asJson();
 
@@ -138,6 +153,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
+			Unirest.setTimeouts(5000, 20000);
 			final HttpResponse<JsonNode> jsonResponse = Unirest.get(
 					url.toString()).asJson();
 
@@ -166,9 +182,11 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
+			Unirest.setTimeouts(5000, 20000);
 			final HttpResponse<JsonNode> jsonResponse = Unirest
-					.post(url.toString()).body(new JsonNode(req.toString()))
-					.asJson();
+					.post(url.toString())
+					.header("Content-Type", "application/json")
+					.body(new JsonNode(req.toString())).asJson();
 			o = jsonResponse.getBody().getObject();
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
@@ -193,9 +211,11 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
+			Unirest.setTimeouts(5000, 20000);
 			final HttpResponse<JsonNode> jsonResponse = Unirest
-					.put(url.toString()).body(new JsonNode(req.toString()))
-					.asJson();
+					.put(url.toString())
+					.header("Content-Type", "application/json")
+					.body(new JsonNode(req.toString())).asJson();
 			o = jsonResponse.getBody().getObject();
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
@@ -212,13 +232,11 @@ public class RestUtils {
 		return o;
 	}
 
-	public static Future getJsonObjectFromJsonGetAsync(URL url, JSONObject req,
-			String context, final RestAsyncCallback callback) throws Exception {
+	public static Future<HttpResponse<JsonNode>> getJsonObjectFromJsonGetAsync(
+			URL url, JSONObject req, String context// , final RestAsyncCallback
+													// callback
+	) throws Exception {
 		if (context != null) {
-			log.info(context + " url: " + url + " req: " + req.toString(3));
-		}
-
-		try {
 			String u = url.toString();
 			StringBuilder sb = new StringBuilder(u);
 			sb.append(u.contains("?") ? "&" : "?");
@@ -237,8 +255,14 @@ public class RestUtils {
 			}
 			url = new URL(sb.toString());
 
-			return Unirest.get(url.toString()).asJsonAsync(
-					new RestLoggingCallback(callback, req, context, log));
+			log.info(context + " get url: " + url);
+		}
+
+		try {
+			Unirest.setTimeouts(5000, 20000);
+			return Unirest.get(url.toString()).asJsonAsync();
+			// return Unirest.get(url.toString()).asJsonAsync(
+			// new RestLoggingCallback(callback, req, context, log));
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
 			String errstack = stackAsString(ex);
@@ -247,18 +271,19 @@ public class RestUtils {
 	}
 
 	public static Future getJsonObjectFromJsonPostAsync(URL url,
-			JSONObject req, String context, final RestAsyncCallback callback)
-			throws Exception {
+			JSONObject req, String context// , final RestAsyncCallback callback
+	) throws Exception {
 		if (context != null) {
 			log.info(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		try {
-			return Unirest
-					.post(url.toString())
-					.body(new JsonNode(req.toString()))
-					.asJsonAsync(
-							new RestLoggingCallback(callback, req, context, log));
+			Unirest.setTimeouts(5000, 20000);
+			return Unirest.post(url.toString())
+					.header("Content-Type", "application/json")
+					.body(new JsonNode(req.toString())).asJsonAsync();
+			// .asJsonAsync(
+			// new RestLoggingCallback(callback, req, context, log));
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
 			String errstack = stackAsString(ex);
@@ -298,6 +323,7 @@ public class RestUtils {
 			json.put("errordetails", arr);
 
 			response.setStatus(500);
+			log.severe(json.toString(3));
 			writeJsonResp(response, json, context, service);
 		} catch (Exception e1) {
 			throw new RuntimeException("Erro retornando mensagem de erro.", e1);
@@ -342,5 +368,39 @@ public class RestUtils {
 		if (s != null)
 			return s;
 		return defaultValue;
+	}
+
+	public static String cacheKeyJson(String context, JSONObject json) {
+		String key = String.valueOf(json.toString().hashCode());
+		return key;
+	}
+
+	public static void cacheStoreJson(String context, JSONObject jsonRequest,
+			JSONObject jsonResponse) {
+		String key = cacheKeyJson(context, jsonRequest);
+
+		byte[] value;
+		try {
+			value = jsonResponse.toString().getBytes("UTF-8");
+			store(key, value); // Populate cache.
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static String cacheRetrieveJson(String context,
+			JSONObject jsonRequest) {
+
+		String key = cacheKeyJson(context, jsonRequest);
+
+		byte[] ab = (byte[]) retrieve(key); // Read from cache.
+		if (ab != null) {
+			try {
+				return new String(ab, "UTF-8");
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return null;
 	}
 }
