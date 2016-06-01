@@ -307,8 +307,7 @@ public class RestUtils {
 				if (t instanceof RestException) {
 					RestException wse = (RestException) t;
 					if (wse.jsonresp != null) {
-						JSONObject resp = new JSONObject(wse.jsonresp);
-						JSONArray arrsub = resp.optJSONArray("errordetails");
+						JSONArray arrsub = wse.jsonresp.optJSONArray("errordetails");
 						if (arrsub != null)
 							arr = arrsub;
 					}
