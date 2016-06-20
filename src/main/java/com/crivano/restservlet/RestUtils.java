@@ -27,6 +27,11 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 
 public class RestUtils {
+	
+	static {
+		Unirest.setTimeouts(5000, 20000);
+	}
+	
 	private static final Logger log = Logger.getLogger(RestUtils.class
 			.getName());
 
@@ -125,7 +130,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
-			Unirest.setTimeouts(5000, 20000);
+			
 			final HttpResponse<JsonNode> jsonResponse = Unirest.get(url)
 					.asJson();
 
@@ -153,7 +158,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
-			Unirest.setTimeouts(5000, 20000);
+			
 			final HttpResponse<JsonNode> jsonResponse = Unirest.get(
 					url.toString()).asJson();
 
@@ -182,7 +187,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
-			Unirest.setTimeouts(5000, 20000);
+			
 			final HttpResponse<JsonNode> jsonResponse = Unirest
 					.post(url.toString())
 					.header("Content-Type", "application/json")
@@ -211,7 +216,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
-			Unirest.setTimeouts(5000, 20000);
+			
 			final HttpResponse<JsonNode> jsonResponse = Unirest
 					.put(url.toString())
 					.header("Content-Type", "application/json")
@@ -259,7 +264,7 @@ public class RestUtils {
 		}
 
 		try {
-			Unirest.setTimeouts(5000, 20000);
+			
 			return Unirest.get(url.toString()).asJsonAsync();
 			// return Unirest.get(url.toString()).asJsonAsync(
 			// new RestLoggingCallback(callback, req, context, log));
@@ -278,7 +283,7 @@ public class RestUtils {
 		}
 
 		try {
-			Unirest.setTimeouts(5000, 20000);
+			
 			return Unirest.post(url.toString())
 					.header("Content-Type", "application/json")
 					.body(new JsonNode(req.toString())).asJsonAsync();
