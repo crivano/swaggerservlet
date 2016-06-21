@@ -29,7 +29,7 @@ public abstract class RestServlet extends HttpServlet {
 			}
 
 			Enumeration paramNames = request.getParameterNames();
-			while (paramNames.hasMoreElements()) {
+			while (paramNames != null && paramNames.hasMoreElements()) {
 				String paramName = (String) paramNames.nextElement();
 				String[] paramValues = request.getParameterValues(paramName);
 				if (request.getParameter(paramName) instanceof String
