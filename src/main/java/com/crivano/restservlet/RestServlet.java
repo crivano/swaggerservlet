@@ -57,7 +57,7 @@ public abstract class RestServlet extends HttpServlet {
 				}
 			}
 
-			run(request, response, req, resp);
+			run(req, resp);
 
 			if (resp.has("content-type")) {
 				byte[] payload = new Base64().decode(resp.getString("payload"));
@@ -115,8 +115,7 @@ public abstract class RestServlet extends HttpServlet {
 			throws Exception {
 	};
 
-	abstract protected void run(HttpServletRequest request,
-			HttpServletResponse response, JSONObject req, JSONObject resp)
+	abstract protected void run(JSONObject req, JSONObject resp)
 			throws Exception;
 
 	abstract protected String getContext();

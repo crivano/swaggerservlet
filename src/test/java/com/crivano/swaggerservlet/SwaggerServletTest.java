@@ -13,10 +13,6 @@ import junit.framework.TestCase;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONString;
-
-import com.crivano.swaggerservlet.Swagger;
-import com.crivano.swaggerservlet.SwaggerServlet;
 
 /**
  * Unit test for simple App.
@@ -55,7 +51,7 @@ public class SwaggerServletTest extends TestCase {
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
 		ss.prepare(request, null, req, resp);
-		ss.run(request, null, req, resp);
+		ss.run(req, resp);
 
 		assertEquals("{\"color\":\"white\"}", resp.toString());
 	}
@@ -69,7 +65,7 @@ public class SwaggerServletTest extends TestCase {
 
 		try {
 			ss.prepare(request, null, req, resp);
-			ss.run(request, null, req, resp);
+			ss.run(req, resp);
 			assertTrue(false);
 		} catch (Exception ex) {
 			assertEquals("unknown petId", ex.getMessage());
@@ -117,4 +113,5 @@ public class SwaggerServletTest extends TestCase {
 		assertEquals("Swagger Petstore", errordetails.get("service"));
 		assertNotNull(errordetails.get("stacktrace"));
 	}
+
 }

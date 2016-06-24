@@ -3,6 +3,7 @@ package com.crivano.swaggerservlet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -22,9 +23,13 @@ public class SwaggerServlet extends RestServlet {
 		// Return the swagger.yaml that is placed at
 		// src/main/webapp/{servletpath}/swagger.yaml
 		//
-		if (req.getPathInfo().equals("/swagger.yaml")) {
+		if (req.getPathInfo().endsWith("/swagger.yaml")) {
 			InputStream is = this.getServletContext().getResourceAsStream(
 					req.getServletPath() + req.getPathInfo());
+			if (is == null) {
+				is = this.getClass().getResourceAsStream(
+						"/swagger.yaml");
+			}
 			String sSwagger = convertStreamToString(is);
 			byte[] ab = sSwagger.getBytes();
 			resp.setContentType("text/x-yaml");
@@ -58,10 +63,19 @@ public class SwaggerServlet extends RestServlet {
 	protected void prepare(HttpServletRequest request,
 			HttpServletResponse response, JSONObject req, JSONObject resp)
 			throws Exception {
+		String requestMethod = request.getMethod();
+		String requestPathInfo = request.getPathInfo();
+		prepare(requestMethod, requestPathInfo, req);
+	}
+
+	public void prepare(String requestMethod, String requestPathInfo,
+			JSONObject req) throws ClassNotFoundException,
+			NoSuchMethodException, InstantiationException,
+			IllegalAccessException, InvocationTargetException {
 		Prepared p = new Prepared();
 
-		String method = request.getMethod().toLowerCase();
-		String path = swagger.checkRequest(request.getPathInfo(), method, req);
+		String method = requestMethod.toLowerCase();
+		String path = swagger.checkRequest(requestPathInfo, method, req);
 
 		path = toCamelCase(path + " " + method);
 
@@ -76,12 +90,10 @@ public class SwaggerServlet extends RestServlet {
 	}
 
 	@Override
-	protected void run(HttpServletRequest request,
-			HttpServletResponse response, JSONObject req, JSONObject resp)
-			throws Exception {
+	protected void run(JSONObject req, JSONObject resp) throws Exception {
 		Prepared p = current.get();
 
-		p.action.run(request, response, req, resp);
+		p.action.run(req, resp);
 	}
 
 	public String toCamelCase(String path) {
