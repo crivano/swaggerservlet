@@ -29,7 +29,7 @@ public class RestLoggingCallback implements Callback<JsonNode> {
 		o = response.getBody().getObject();
 		if (context != null)
 			try {
-				log.info(context + " resp: " + o.toString(3));
+				log.fine(context + " resp: " + o.toString(3));
 			} catch (JSONException e) {
 			}
 		String error = o.optString("error", null);

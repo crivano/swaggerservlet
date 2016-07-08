@@ -108,7 +108,7 @@ public class SwaggerServletTest extends TestCase {
 		JSONObject errordetails = resp.getJSONArray("errordetails")
 				.getJSONObject(0);
 
-		assertEquals("unknown petId", resp.get("error"));
+		assertEquals("unknown petId", resp.get("errormsg"));
 		assertEquals("test", errordetails.get("context"));
 		assertEquals("Swagger Petstore", errordetails.get("service"));
 		assertNotNull(errordetails.get("stacktrace"));

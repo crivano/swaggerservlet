@@ -23,7 +23,7 @@ public class SwaggerServlet extends RestServlet {
 		// Return the swagger.yaml that is placed at
 		// src/main/webapp/{servletpath}/swagger.yaml
 		//
-		if (req.getPathInfo().endsWith("/swagger.yaml")) {
+		if (req.getPathInfo() != null && req.getPathInfo().endsWith("/swagger.yaml")) {
 			InputStream is = this.getServletContext().getResourceAsStream(
 					req.getServletPath() + req.getPathInfo());
 			if (is == null) {

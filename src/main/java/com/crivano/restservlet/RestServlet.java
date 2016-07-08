@@ -17,8 +17,9 @@ public abstract class RestServlet extends HttpServlet {
 	@Override
 	public void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		JSONObject req = new JSONObject();
+		JSONObject resp = new JSONObject();
 		try {
-			JSONObject req = new JSONObject();
 
 			try {
 				if (request.getContentType() != null
@@ -43,7 +44,6 @@ public abstract class RestServlet extends HttpServlet {
 						&& !req.has((String) key))
 					req.put((String) key, request.getParameter((String) key));
 
-			JSONObject resp = new JSONObject();
 			prepare(request, response, req, resp);
 
 			corsHeaders(response);
@@ -74,7 +74,8 @@ public abstract class RestServlet extends HttpServlet {
 
 			RestUtils.writeJsonResp(response, resp, getContext(), getService());
 		} catch (Exception e) {
-			RestUtils.writeJsonError(response, e, getContext(), getService());
+			RestUtils.writeJsonError(request, response, e, req, resp, getContext(),
+					getService());
 		}
 	}
 

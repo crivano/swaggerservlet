@@ -27,11 +27,11 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 
 public class RestUtils {
-	
+
 	static {
 		Unirest.setTimeouts(5000, 20000);
 	}
-	
+
 	private static final Logger log = Logger.getLogger(RestUtils.class
 			.getName());
 
@@ -43,7 +43,7 @@ public class RestUtils {
 			String sJson = RestUtils.getBody(request);
 			JSONObject req = new JSONObject(sJson);
 			if (context != null)
-				log.info(context + " req: " + req.toString(3));
+				log.fine(context + " req: " + req.toString(3));
 			return req;
 		} catch (Exception ex) {
 			throw new RuntimeException("Cannot parse request body as JSON", ex);
@@ -54,7 +54,7 @@ public class RestUtils {
 			JSONObject resp, String context, String service)
 			throws JSONException, IOException {
 		if (context != null)
-			log.info(context + " resp: " + resp.toString(3));
+			log.fine(context + " resp: " + resp.toString(3));
 
 		String s = resp.toString(2);
 		response.setContentType("application/json; charset=UTF-8");
@@ -66,7 +66,7 @@ public class RestUtils {
 			String resp, String context, String service) throws JSONException,
 			IOException {
 		if (context != null)
-			log.info(context + " resp from cache: " + resp);
+			log.fine(context + " resp from cache: " + resp);
 
 		response.setContentType("application/json; charset=UTF-8");
 		response.setCharacterEncoding("UTF-8");
@@ -126,11 +126,11 @@ public class RestUtils {
 		}
 
 		if (context != null)
-			log.info(context + " url: " + url);
+			log.fine(context + " url: " + url);
 
 		JSONObject o = null;
 		try {
-			
+
 			final HttpResponse<JsonNode> jsonResponse = Unirest.get(url)
 					.asJson();
 
@@ -142,11 +142,11 @@ public class RestUtils {
 		}
 
 		if (context != null)
-			log.info(context + " resp: " + o.toString(3));
+			log.fine(context + " resp: " + o.toString(3));
 
-		String error = o.optString("error", null);
+		String error = o.optString("errormsg", null);
 		if (error != null)
-			throw new Exception(error);
+			throw new RestException(error, null, o, context);
 
 		return o;
 	}
@@ -154,11 +154,11 @@ public class RestUtils {
 	public static JSONObject getJsonObjectFromURL(URL url, String context)
 			throws Exception {
 		if (context != null)
-			log.info(context + " url: " + url);
+			log.fine(context + " url: " + url);
 
 		JSONObject o = null;
 		try {
-			
+
 			final HttpResponse<JsonNode> jsonResponse = Unirest.get(
 					url.toString()).asJson();
 
@@ -170,11 +170,11 @@ public class RestUtils {
 		}
 
 		if (context != null)
-			log.info(context + " resp: " + o.toString(3));
+			log.fine(context + " resp: " + o.toString(3));
 
-		String error = o.optString("error", null);
+		String error = o.optString("errormsg", null);
 		if (error != null)
-			throw new Exception(error);
+			throw new RestException(error, null, o, context);
 
 		return o;
 	}
@@ -182,12 +182,12 @@ public class RestUtils {
 	public static JSONObject getJsonObjectFromJsonPost(URL url, JSONObject req,
 			String context) throws Exception {
 		if (context != null) {
-			log.info(context + " url: " + url + " req: " + req.toString(3));
+			log.fine(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		JSONObject o = null;
 		try {
-			
+
 			final HttpResponse<JsonNode> jsonResponse = Unirest
 					.post(url.toString())
 					.header("Content-Type", "application/json")
@@ -199,9 +199,9 @@ public class RestUtils {
 			throw new RestException(errmsg, req, null, context);
 		}
 		if (context != null)
-			log.info(context + " resp: " + o.toString(3));
+			log.fine(context + " resp: " + o.toString(3));
 
-		String error = o.optString("error", null);
+		String error = o.optString("errormsg", null);
 		if (error != null)
 			throw new RestException(error, req, o, context);
 
@@ -211,12 +211,12 @@ public class RestUtils {
 	public static JSONObject getJsonObjectFromJsonPut(URL url, JSONObject req,
 			String context) throws Exception {
 		if (context != null) {
-			log.info(context + " url: " + url + " req: " + req.toString(3));
+			log.fine(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		JSONObject o = null;
 		try {
-			
+
 			final HttpResponse<JsonNode> jsonResponse = Unirest
 					.put(url.toString())
 					.header("Content-Type", "application/json")
@@ -228,9 +228,9 @@ public class RestUtils {
 			throw new RestException(errmsg, req, null, context);
 		}
 		if (context != null)
-			log.info(context + " resp: " + o.toString(3));
+			log.fine(context + " resp: " + o.toString(3));
 
-		String error = o.optString("error", null);
+		String error = o.optString("errormsg", null);
 		if (error != null)
 			throw new RestException(error, req, o, context);
 
@@ -260,11 +260,11 @@ public class RestUtils {
 			}
 			url = new URL(sb.toString());
 
-			log.info(context + " get url: " + url);
+			log.fine(context + " get url: " + url);
 		}
 
 		try {
-			
+
 			return Unirest.get(url.toString()).asJsonAsync();
 			// return Unirest.get(url.toString()).asJsonAsync(
 			// new RestLoggingCallback(callback, req, context, log));
@@ -279,11 +279,11 @@ public class RestUtils {
 			JSONObject req, String context// , final RestAsyncCallback callback
 	) throws Exception {
 		if (context != null) {
-			log.info(context + " url: " + url + " req: " + req.toString(3));
+			log.fine(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		try {
-			
+
 			return Unirest.post(url.toString())
 					.header("Content-Type", "application/json")
 					.body(new JsonNode(req.toString())).asJsonAsync();
@@ -296,14 +296,15 @@ public class RestUtils {
 		}
 	}
 
-	public static void writeJsonError(HttpServletResponse response,
-			final Exception e, String context, String service) {
+	public static void writeJsonError(HttpServletRequest request, HttpServletResponse response,
+			final Exception e, JSONObject jsonreq, JSONObject jsonresp,
+			String context, String service) {
 		JSONObject json = new JSONObject();
 		String errmsg = messageAsString(e);
 		String errstack = stackAsString(e);
 
 		try {
-			json.put("error", errmsg);
+			json.put("errormsg", errmsg);
 
 			// Error Details
 			JSONArray arr = new JSONArray();
@@ -312,7 +313,8 @@ public class RestUtils {
 				if (t instanceof RestException) {
 					RestException wse = (RestException) t;
 					if (wse.jsonresp != null) {
-						JSONArray arrsub = wse.jsonresp.optJSONArray("errordetails");
+						JSONArray arrsub = wse.jsonresp
+								.optJSONArray("errordetails");
 						if (arrsub != null)
 							arr = arrsub;
 					}
@@ -327,8 +329,12 @@ public class RestUtils {
 			json.put("errordetails", arr);
 
 			response.setStatus(500);
-			log.severe(json.toString(3));
 			writeJsonResp(response, json, context, service);
+
+			detail.put("url", request.getRequestURL());
+			detail.put("req", jsonreq);
+			detail.put("resp", jsonresp);
+			log.severe(json.toString(3));
 		} catch (Exception e1) {
 			throw new RuntimeException("Erro retornando mensagem de erro.", e1);
 		}
