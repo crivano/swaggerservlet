@@ -65,6 +65,7 @@ public abstract class RestServlet extends HttpServlet {
 				response.setContentType(resp.getString("content-type"));
 				response.getOutputStream().write(payload);
 				response.getOutputStream().flush();
+				response.getOutputStream().close();
 				return;
 			}
 
@@ -76,6 +77,8 @@ public abstract class RestServlet extends HttpServlet {
 		} catch (Exception e) {
 			RestUtils.writeJsonError(request, response, e, req, resp, getContext(),
 					getService());
+		} finally {
+			response.getWriter().close();
 		}
 	}
 
