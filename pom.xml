@@ -4,7 +4,7 @@
 
 	<groupId>com.crivano</groupId>
 	<artifactId>swaggerservlet</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<name>swaggerservlet java library</name>
 	<description>swaggerservlet - MIT Java library</description>
 	<packaging>jar</packaging>

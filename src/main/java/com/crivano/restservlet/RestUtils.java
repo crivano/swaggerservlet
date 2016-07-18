@@ -296,12 +296,14 @@ public class RestUtils {
 		}
 	}
 
-	public static void writeJsonError(HttpServletRequest request, HttpServletResponse response,
-			final Exception e, JSONObject jsonreq, JSONObject jsonresp,
-			String context, String service) {
+	public static void writeJsonError(HttpServletRequest request,
+			HttpServletResponse response, final Exception e,
+			JSONObject jsonreq, JSONObject jsonresp, String context,
+			String service) {
 		JSONObject json = new JSONObject();
 		String errmsg = messageAsString(e);
 		String errstack = stackAsString(e);
+		boolean errpresentable = e instanceof IPresentableException;
 
 		try {
 			json.put("errormsg", errmsg);
@@ -317,6 +319,8 @@ public class RestUtils {
 								.optJSONArray("errordetails");
 						if (arrsub != null)
 							arr = arrsub;
+						errpresentable = wse.jsonresp.optBoolean("presentable",
+								errpresentable);
 					}
 					break;
 				}
@@ -325,6 +329,8 @@ public class RestUtils {
 			detail.put("context", context);
 			detail.put("service", service);
 			detail.put("stacktrace", errstack);
+			detail.put("presentable", errpresentable);
+			detail.put("logged", true);
 			arr.put(detail);
 			json.put("errordetails", arr);
 
@@ -336,7 +342,7 @@ public class RestUtils {
 			detail.put("resp", jsonresp);
 			log.severe(json.toString(3));
 		} catch (Exception e1) {
-			throw new RuntimeException("Erro retornando mensagem de erro.", e1);
+			throw new RuntimeException("Error building error message.", e1);
 		}
 	}
 

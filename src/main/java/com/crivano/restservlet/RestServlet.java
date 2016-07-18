@@ -59,6 +59,8 @@ public abstract class RestServlet extends HttpServlet {
 
 			run(req, resp);
 
+			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
+			
 			if (resp.has("content-type")) {
 				byte[] payload = new Base64().decode(resp.getString("payload"));
 				response.setContentLength(payload.length);
