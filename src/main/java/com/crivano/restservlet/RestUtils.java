@@ -1,17 +1,22 @@
 package com.crivano.restservlet;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
@@ -21,21 +26,69 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
+import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 public class RestUtils {
-
-	static {
-		Unirest.setTimeouts(5000, 20000);
-	}
 
 	private static final Logger log = Logger.getLogger(RestUtils.class
 			.getName());
 
 	private static final Map<String, byte[]> cache = new HashMap<String, byte[]>();
+
+	private static ExecutorService executor = Executors
+			.newFixedThreadPool(new Integer(getProperty(
+					"swaggerservlet.threadpool.size", "20")));
+
+	public static String convertStreamToString(java.io.InputStream is) {
+		java.util.Scanner s = new java.util.Scanner(is, "UTF-8")
+				.useDelimiter("\\A");
+		return s.hasNext() ? s.next() : "";
+	}
+
+	public static JSONObject convertStreamToObject(java.io.InputStream is) {
+		JSONObject json;
+		try {
+			json = new JSONObject(convertStreamToString(is));
+		} catch (JSONException e) {
+			return null;
+		}
+		return json;
+	}
+
+	protected static JSONObject doHTTP(String authorization, String url,
+			String method, String body) throws Exception {
+		HttpURLConnection con = null;
+		URL obj = new URL(url);
+		con = (HttpURLConnection) obj.openConnection();
+
+		if (authorization != null)
+			con.setRequestProperty("Authorization", authorization);
+		con.setRequestMethod(method);
+
+		if (body != null) {
+			con.setRequestProperty("Content-Type", "application/json");
+			con.setConnectTimeout(5000); // set timeout to 5 seconds
+			con.setReadTimeout(20000); // set read timeout to 20 seconds
+			// Send post request
+			con.setDoOutput(true);
+			DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+			wr.writeBytes(body);
+			wr.flush();
+			wr.close();
+		}
+
+		int responseCode = con.getResponseCode();
+
+		if (responseCode >= 400 && responseCode < 600) {
+			JSONObject json = new JSONObject(
+					convertStreamToString(con.getErrorStream()));
+			return json;
+		}
+
+		JSONObject json = new JSONObject(
+				convertStreamToString(con.getInputStream()));
+		return json;
+	}
 
 	public static JSONObject getJsonReq(HttpServletRequest request,
 			String context) {
@@ -73,7 +126,8 @@ public class RestUtils {
 		response.getWriter().println(resp);
 	}
 
-	public static String getBody(HttpServletRequest request) throws IOException {
+	private static String getBody(HttpServletRequest request)
+			throws IOException {
 
 		String body = null;
 		StringBuilder stringBuilder = new StringBuilder();
@@ -106,8 +160,8 @@ public class RestUtils {
 		return body;
 	}
 
-	public static JSONObject getJsonObject(String context, String url,
-			String... params) throws Exception {
+	public static JSONObject restGet(String context, String authorization,
+			String url, String... params) throws Exception {
 		if (params != null) {
 			StringBuilder sb = new StringBuilder(url);
 			sb.append(url.contains("?") ? "&" : "?");
@@ -130,11 +184,7 @@ public class RestUtils {
 
 		JSONObject o = null;
 		try {
-
-			final HttpResponse<JsonNode> jsonResponse = Unirest.get(url)
-					.asJson();
-
-			o = jsonResponse.getBody().getObject();
+			o = doHTTP(authorization, url, "GET", null);
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
 			String errstack = stackAsString(ex);
@@ -151,48 +201,15 @@ public class RestUtils {
 		return o;
 	}
 
-	public static JSONObject getJsonObjectFromURL(URL url, String context)
-			throws Exception {
-		if (context != null)
-			log.fine(context + " url: " + url);
-
-		JSONObject o = null;
-		try {
-
-			final HttpResponse<JsonNode> jsonResponse = Unirest.get(
-					url.toString()).asJson();
-
-			o = jsonResponse.getBody().getObject();
-		} catch (Exception ex) {
-			String errmsg = messageAsString(ex);
-			String errstack = stackAsString(ex);
-			throw new RestException(errmsg, null, null, context);
-		}
-
-		if (context != null)
-			log.fine(context + " resp: " + o.toString(3));
-
-		String error = o.optString("errormsg", null);
-		if (error != null)
-			throw new RestException(error, null, o, context);
-
-		return o;
-	}
-
-	public static JSONObject getJsonObjectFromJsonPost(URL url, JSONObject req,
-			String context) throws Exception {
+	public static JSONObject restPost(String context, String authorization,
+			String url, JSONObject req) throws Exception {
 		if (context != null) {
 			log.fine(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		JSONObject o = null;
 		try {
-
-			final HttpResponse<JsonNode> jsonResponse = Unirest
-					.post(url.toString())
-					.header("Content-Type", "application/json")
-					.body(new JsonNode(req.toString())).asJson();
-			o = jsonResponse.getBody().getObject();
+			o = doHTTP(authorization, url.toString(), "POST", req.toString());
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
 			String errstack = stackAsString(ex);
@@ -208,20 +225,15 @@ public class RestUtils {
 		return o;
 	}
 
-	public static JSONObject getJsonObjectFromJsonPut(URL url, JSONObject req,
-			String context) throws Exception {
+	public static JSONObject restPut(String context, String authorization,
+			String url, JSONObject req) throws Exception {
 		if (context != null) {
 			log.fine(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		JSONObject o = null;
 		try {
-
-			final HttpResponse<JsonNode> jsonResponse = Unirest
-					.put(url.toString())
-					.header("Content-Type", "application/json")
-					.body(new JsonNode(req.toString())).asJson();
-			o = jsonResponse.getBody().getObject();
+			o = doHTTP(authorization, url, "PUT", req.toString());
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
 			String errstack = stackAsString(ex);
@@ -237,12 +249,10 @@ public class RestUtils {
 		return o;
 	}
 
-	public static Future<HttpResponse<JsonNode>> getJsonObjectFromJsonGetAsync(
-			URL url, JSONObject req, String context// , final RestAsyncCallback
-													// callback
-	) throws Exception {
+	public static Future<RestAsyncResponse> restGetAsync(String context,
+			String authorization, String url, JSONObject req) throws Exception {
 		if (context != null) {
-			String u = url.toString();
+			String u = url;
 			StringBuilder sb = new StringBuilder(u);
 			sb.append(u.contains("?") ? "&" : "?");
 
@@ -258,37 +268,14 @@ public class RestUtils {
 					sb.append(URLEncoder.encode(req.getString(key), "UTF-8"));
 				}
 			}
-			url = new URL(sb.toString());
+			url = sb.toString();
 
 			log.fine(context + " get url: " + url);
 		}
 
 		try {
-
-			return Unirest.get(url.toString()).asJsonAsync();
-			// return Unirest.get(url.toString()).asJsonAsync(
-			// new RestLoggingCallback(callback, req, context, log));
-		} catch (Exception ex) {
-			String errmsg = messageAsString(ex);
-			String errstack = stackAsString(ex);
-			throw new RestException(errmsg, req, null, context);
-		}
-	}
-
-	public static Future getJsonObjectFromJsonPostAsync(URL url,
-			JSONObject req, String context// , final RestAsyncCallback callback
-	) throws Exception {
-		if (context != null) {
-			log.fine(context + " url: " + url + " req: " + req.toString(3));
-		}
-
-		try {
-
-			return Unirest.post(url.toString())
-					.header("Content-Type", "application/json")
-					.body(new JsonNode(req.toString())).asJsonAsync();
-			// .asJsonAsync(
-			// new RestLoggingCallback(callback, req, context, log));
+			// Fire a request.
+			return executor.submit(new RestAsyncRequest(authorization, url));
 		} catch (Exception ex) {
 			String errmsg = messageAsString(ex);
 			String errstack = stackAsString(ex);
@@ -418,5 +405,13 @@ public class RestUtils {
 			}
 		}
 		return null;
+	}
+
+	public static String base64Encode(byte[] bytes) {
+		return Base64Coder.encodeLines(bytes);
+	}
+
+	public static byte[] base64Decode(String b64) {
+		return Base64Coder.decodeLines(b64);
 	}
 }

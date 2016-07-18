@@ -5,12 +5,7 @@ import java.util.logging.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.async.Callback;
-import com.mashape.unirest.http.exceptions.UnirestException;
-
-public class RestLoggingCallback implements Callback<JsonNode> {
+public class RestLoggingCallback {
 	private RestAsyncCallback callback;
 	private JSONObject req;
 	private String context;
@@ -24,9 +19,9 @@ public class RestLoggingCallback implements Callback<JsonNode> {
 		this.log = log;
 	}
 
-	public void completed(HttpResponse<JsonNode> response) {
+	public void completed(RestAsyncResponse response) {
 		JSONObject o = null;
-		o = response.getBody().getObject();
+		o = response.getJSONObject();
 		if (context != null)
 			try {
 				log.fine(context + " resp: " + o.toString(3));
@@ -45,7 +40,7 @@ public class RestLoggingCallback implements Callback<JsonNode> {
 			}
 	}
 
-	public void failed(UnirestException ex) {
+	public void failed(Exception ex) {
 		String errmsg = RestUtils.messageAsString(ex);
 		String errstack = RestUtils.stackAsString(ex);
 		RestException wse = new RestException(errmsg, req, null, context);

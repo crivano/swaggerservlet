@@ -8,19 +8,20 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.codec.binary.Base64;
 import org.json.JSONObject;
 
 public abstract class RestServlet extends HttpServlet {
 	private static final long serialVersionUID = -3272264240843348162L;
+
+	private String authorization = null;
 
 	@Override
 	public void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		JSONObject req = new JSONObject();
 		JSONObject resp = new JSONObject();
-		try {
 
+		try {
 			try {
 				if (request.getContentType() != null
 						&& request.getContentType().startsWith(
@@ -56,13 +57,19 @@ public abstract class RestServlet extends HttpServlet {
 					return;
 				}
 			}
-
+			
+			if (getAuthorization() != null
+					&& !getAuthorization().equals(
+							request.getHeader("Authorization")))
+				throw new Exception("Unauthorized.");
+ 
 			run(req, resp);
 
 			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
-			
+
 			if (resp.has("content-type")) {
-				byte[] payload = new Base64().decode(resp.getString("payload"));
+				byte[] payload = RestUtils.base64Decode(resp
+						.getString("payload"));
 				response.setContentLength(payload.length);
 				response.setContentType(resp.getString("content-type"));
 				response.getOutputStream().write(payload);
@@ -77,8 +84,8 @@ public abstract class RestServlet extends HttpServlet {
 
 			RestUtils.writeJsonResp(response, resp, getContext(), getService());
 		} catch (Exception e) {
-			RestUtils.writeJsonError(request, response, e, req, resp, getContext(),
-					getService());
+			RestUtils.writeJsonError(request, response, e, req, resp,
+					getContext(), getService());
 		} finally {
 			response.getWriter().close();
 		}
@@ -127,4 +134,12 @@ public abstract class RestServlet extends HttpServlet {
 	abstract protected String getContext();
 
 	abstract protected String getService();
+
+	public String getAuthorization() {
+		return authorization;
+	}
+
+	public void setAuthorization(String authorization) {
+		this.authorization = authorization;
+	}
 }
