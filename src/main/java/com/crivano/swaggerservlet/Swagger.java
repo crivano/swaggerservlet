@@ -77,6 +77,9 @@ public class Swagger {
 
 	public String checkRequest(String path, String method, JSONObject req) {
 		String basePath = (String) this.swagger.get("basePath");
+		
+		if (path == null)
+			throw new RuntimeException("path can't be null");
 
 		if (basePath != null && path.startsWith(basePath))
 			path = path.substring(basePath.length());

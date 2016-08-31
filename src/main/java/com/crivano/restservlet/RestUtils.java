@@ -14,11 +14,9 @@ import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.logging.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -26,12 +24,12 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 public class RestUtils {
-
-	private static final Logger log = Logger.getLogger(RestUtils.class
-			.getName());
+	private static final Logger log = LoggerFactory.getLogger(RestUtils.class);
 
 	private static final Map<String, byte[]> cache = new HashMap<String, byte[]>();
 
@@ -96,7 +94,7 @@ public class RestUtils {
 			String sJson = RestUtils.getBody(request);
 			JSONObject req = new JSONObject(sJson);
 			if (context != null)
-				log.fine(context + " req: " + req.toString(3));
+				log.debug(context + " req: " + req.toString(3));
 			return req;
 		} catch (Exception ex) {
 			throw new RuntimeException("Cannot parse request body as JSON", ex);
@@ -107,7 +105,7 @@ public class RestUtils {
 			JSONObject resp, String context, String service)
 			throws JSONException, IOException {
 		if (context != null)
-			log.fine(context + " resp: " + resp.toString(3));
+			log.debug(context + " resp: " + resp.toString(3));
 
 		String s = resp.toString(2);
 		response.setContentType("application/json; charset=UTF-8");
@@ -119,7 +117,7 @@ public class RestUtils {
 			String resp, String context, String service) throws JSONException,
 			IOException {
 		if (context != null)
-			log.fine(context + " resp from cache: " + resp);
+			log.debug(context + " resp from cache: " + resp);
 
 		response.setContentType("application/json; charset=UTF-8");
 		response.setCharacterEncoding("UTF-8");
@@ -180,7 +178,7 @@ public class RestUtils {
 		}
 
 		if (context != null)
-			log.fine(context + " url: " + url);
+			log.debug(context + " url: " + url);
 
 		JSONObject o = null;
 		try {
@@ -192,19 +190,26 @@ public class RestUtils {
 		}
 
 		if (context != null)
-			log.fine(context + " resp: " + o.toString(3));
+			log.debug(context + " resp: " + o.toString(3));
 
-		String error = o.optString("errormsg", null);
-		if (error != null)
-			throw new RestException(error, null, o, context);
+		propagateError(context, o);
 
 		return o;
+	}
+
+	private static void propagateError(String context, JSONObject o)
+			throws RestException {
+		String error = o.optString("errormsg", null);
+		if (error == null) // Keep compatibility with earlier versions
+			error = o.optString("error", null);
+		if (error != null)
+			throw new RestException(error, null, o, context);
 	}
 
 	public static JSONObject restPost(String context, String authorization,
 			String url, JSONObject req) throws Exception {
 		if (context != null) {
-			log.fine(context + " url: " + url + " req: " + req.toString(3));
+			log.debug(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		JSONObject o = null;
@@ -216,11 +221,9 @@ public class RestUtils {
 			throw new RestException(errmsg, req, null, context);
 		}
 		if (context != null)
-			log.fine(context + " resp: " + o.toString(3));
+			log.debug(context + " resp: " + o.toString(3));
 
-		String error = o.optString("errormsg", null);
-		if (error != null)
-			throw new RestException(error, req, o, context);
+		propagateError(context, o);
 
 		return o;
 	}
@@ -228,7 +231,7 @@ public class RestUtils {
 	public static JSONObject restPut(String context, String authorization,
 			String url, JSONObject req) throws Exception {
 		if (context != null) {
-			log.fine(context + " url: " + url + " req: " + req.toString(3));
+			log.debug(context + " url: " + url + " req: " + req.toString(3));
 		}
 
 		JSONObject o = null;
@@ -240,11 +243,9 @@ public class RestUtils {
 			throw new RestException(errmsg, req, null, context);
 		}
 		if (context != null)
-			log.fine(context + " resp: " + o.toString(3));
+			log.debug(context + " resp: " + o.toString(3));
 
-		String error = o.optString("errormsg", null);
-		if (error != null)
-			throw new RestException(error, req, o, context);
+		propagateError(context, o);
 
 		return o;
 	}
@@ -270,7 +271,7 @@ public class RestUtils {
 			}
 			url = sb.toString();
 
-			log.fine(context + " get url: " + url);
+			log.debug(context + " get url: " + url);
 		}
 
 		try {
@@ -327,7 +328,7 @@ public class RestUtils {
 			detail.put("url", request.getRequestURL());
 			detail.put("req", jsonreq);
 			detail.put("resp", jsonresp);
-			log.severe(json.toString(3));
+			log.error(json.toString(3));
 		} catch (Exception e1) {
 			throw new RuntimeException("Error building error message.", e1);
 		}
@@ -346,6 +347,11 @@ public class RestUtils {
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
 		String errstack = sw.toString(); // stack trace as a string
+		if (errstack != null) {
+			String split[] = errstack
+					.split("\r?\n?\tat com.crivano.swaggerservlet");
+			errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
+		}
 		return errstack;
 	}
 

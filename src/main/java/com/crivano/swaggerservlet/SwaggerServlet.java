@@ -73,6 +73,7 @@ public class SwaggerServlet extends RestServlet {
 			NoSuchMethodException, InstantiationException,
 			IllegalAccessException, InvocationTargetException {
 		Prepared p = new Prepared();
+		current.set(null);
 
 		String method = requestMethod.toLowerCase();
 		String path = swagger.checkRequest(requestPathInfo, method, req);
