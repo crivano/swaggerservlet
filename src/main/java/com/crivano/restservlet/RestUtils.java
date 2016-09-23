@@ -347,11 +347,11 @@ public class RestUtils {
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
 		String errstack = sw.toString(); // stack trace as a string
-		if (errstack != null) {
-			String split[] = errstack
-					.split("\r?\n?\tat com.crivano.swaggerservlet");
-			errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
-		}
+//		if (errstack != null) {
+//			String split[] = errstack
+//					.split("\r?\n?\tat com.crivano.swaggerservlet");
+//			errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
+//		}
 		return errstack;
 	}
 
