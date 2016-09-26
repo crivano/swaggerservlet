@@ -14,6 +14,7 @@ import org.json.JSONObject;
 import com.crivano.restservlet.ICacheableRestAction;
 import com.crivano.restservlet.IRestAction;
 import com.crivano.restservlet.RestServlet;
+import com.crivano.restservlet.RestUtils;
 
 public class SwaggerServlet extends RestServlet {
 	@Override
@@ -23,14 +24,14 @@ public class SwaggerServlet extends RestServlet {
 		// Return the swagger.yaml that is placed at
 		// src/main/webapp/{servletpath}/swagger.yaml
 		//
-		if (req.getPathInfo() != null && req.getPathInfo().endsWith("/swagger.yaml")) {
+		if (req.getPathInfo() != null
+				&& req.getPathInfo().endsWith("/swagger.yaml")) {
 			InputStream is = this.getServletContext().getResourceAsStream(
 					req.getServletPath() + req.getPathInfo());
 			if (is == null) {
-				is = this.getClass().getResourceAsStream(
-						"/swagger.yaml");
+				is = this.getClass().getResourceAsStream("/swagger.yaml");
 			}
-			String sSwagger = convertStreamToString(is);
+			String sSwagger = RestUtils.convertStreamToString(is);
 			byte[] ab = sSwagger.getBytes();
 			resp.setContentType("text/x-yaml");
 			resp.setContentLength(ab.length);
@@ -38,12 +39,6 @@ public class SwaggerServlet extends RestServlet {
 			resp.getOutputStream().flush();
 		} else
 			super.doGet(req, resp);
-	}
-
-	static String convertStreamToString(java.io.InputStream is) {
-		try (java.util.Scanner s = new java.util.Scanner(is)) {
-			return s.useDelimiter("\\A").hasNext() ? s.next() : "";
-		}
 	}
 
 	private static final long serialVersionUID = 4436503480265700847L;

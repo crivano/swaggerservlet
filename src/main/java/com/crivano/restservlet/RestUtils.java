@@ -14,6 +14,7 @@ import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -31,61 +32,27 @@ import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 public class RestUtils {
 	private static final Logger log = LoggerFactory.getLogger(RestUtils.class);
 
-	private static final Map<String, byte[]> cache = new HashMap<String, byte[]>();
+	private static Map<String, String> properties = new HashMap<>();
 
 	private static ExecutorService executor = Executors
 			.newFixedThreadPool(new Integer(getProperty(
 					"swaggerservlet.threadpool.size", "20")));
 
-	public static String convertStreamToString(java.io.InputStream is) {
-		java.util.Scanner s = new java.util.Scanner(is, "UTF-8")
-				.useDelimiter("\\A");
-		return s.hasNext() ? s.next() : "";
+	private static IHTTP http = new DefaultHTTP();
+
+	private static IMemCache memcache = new DefaultMemCache();
+
+	public static void setHttp(IHTTP http) {
+		RestUtils.http = http;
 	}
 
-	public static JSONObject convertStreamToObject(java.io.InputStream is) {
-		JSONObject json;
-		try {
-			json = new JSONObject(convertStreamToString(is));
-		} catch (JSONException e) {
-			return null;
-		}
-		return json;
+	public static void setCache(IMemCache memcache) {
+		RestUtils.memcache = memcache;
 	}
 
 	protected static JSONObject doHTTP(String authorization, String url,
 			String method, String body) throws Exception {
-		HttpURLConnection con = null;
-		URL obj = new URL(url);
-		con = (HttpURLConnection) obj.openConnection();
-
-		if (authorization != null)
-			con.setRequestProperty("Authorization", authorization);
-		con.setRequestMethod(method);
-
-		if (body != null) {
-			con.setRequestProperty("Content-Type", "application/json");
-			con.setConnectTimeout(5000); // set timeout to 5 seconds
-			con.setReadTimeout(20000); // set read timeout to 20 seconds
-			// Send post request
-			con.setDoOutput(true);
-			DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-			wr.writeBytes(body);
-			wr.flush();
-			wr.close();
-		}
-
-		int responseCode = con.getResponseCode();
-
-		if (responseCode >= 400 && responseCode < 600) {
-			JSONObject json = new JSONObject(
-					convertStreamToString(con.getErrorStream()));
-			return json;
-		}
-
-		JSONObject json = new JSONObject(
-				convertStreamToString(con.getInputStream()));
-		return json;
+		return http.fetch(authorization, url, method, body);
 	}
 
 	public static JSONObject getJsonReq(HttpServletRequest request,
@@ -347,28 +314,17 @@ public class RestUtils {
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
 		String errstack = sw.toString(); // stack trace as a string
-//		if (errstack != null) {
-//			String split[] = errstack
-//					.split("\r?\n?\tat com.crivano.swaggerservlet");
-//			errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
-//		}
+		// if (errstack != null) {
+		// String split[] = errstack
+		// .split("\r?\n?\tat com.crivano.swaggerservlet");
+		// errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
+		// }
 		return errstack;
 	}
 
-	public static void store(String sha1, byte[] ba) {
-		cache.put(sha1, ba);
-	}
-
-	public static byte[] retrieve(String sha1) {
-		if (cache.containsKey(sha1)) {
-			byte[] ba = cache.get(sha1);
-			cache.remove(sha1);
-			return ba;
-		}
-		return null;
-	}
-
 	public static String getProperty(String propertyName, String defaultValue) {
+		if (properties.containsKey(propertyName))
+			return properties.get(propertyName);
 		String s = System.getProperty(propertyName);
 		if (s != null)
 			return s;
@@ -377,6 +333,10 @@ public class RestUtils {
 		if (s != null)
 			return s;
 		return defaultValue;
+	}
+
+	public static void setProperty(String propertyName, String value) {
+		properties.put(propertyName, value);
 	}
 
 	public static String cacheKeyJson(String context, JSONObject json) {
@@ -391,7 +351,7 @@ public class RestUtils {
 		byte[] value;
 		try {
 			value = jsonResponse.toString().getBytes("UTF-8");
-			store(key, value); // Populate cache.
+			memcache.store(key, value); // Populate cache.
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
 		}
@@ -402,7 +362,7 @@ public class RestUtils {
 
 		String key = cacheKeyJson(context, jsonRequest);
 
-		byte[] ab = (byte[]) retrieve(key); // Read from cache.
+		byte[] ab = (byte[]) memcache.retrieve(key); // Read from cache.
 		if (ab != null) {
 			try {
 				return new String(ab, "UTF-8");
@@ -419,5 +379,45 @@ public class RestUtils {
 
 	public static byte[] base64Decode(String b64) {
 		return Base64Coder.decodeLines(b64);
+	}
+
+	public static String convertStreamToString(java.io.InputStream is) {
+		try (java.util.Scanner s = new java.util.Scanner(is)) {
+			return s.useDelimiter("\\A").hasNext() ? s.next() : "";
+		}
+	}
+
+	public static void memCacheStore(String key, byte[] ba) {
+		memcache.store(key, ba);
+	}
+
+	public static byte[] memCacheRetrieve(String key) {
+		return memcache.retrieve(key);
+	}
+
+	public static byte[] memCacheRemove(String key) {
+		return memcache.remove(key);
+	}
+
+	public static String dbStore(String payload) {
+		String id = UUID.randomUUID().toString();
+		memCacheStore(id, payload.getBytes());
+		return id;
+	}
+
+	public static String dbRetrieve(String id, boolean remove) {
+		byte[] ba = null;
+		if (remove)
+			ba = memCacheRemove(id);
+		else
+			ba = memCacheRetrieve(id);
+		if (ba == null)
+			return null;
+		String s = new String(ba);
+
+		if (s == null || s.trim().length() == 0)
+			return null;
+
+		return s;
 	}
 }

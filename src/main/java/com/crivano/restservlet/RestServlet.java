@@ -9,9 +9,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class RestServlet extends HttpServlet {
 	private static final long serialVersionUID = -3272264240843348162L;
+	private static final Logger log = LoggerFactory
+			.getLogger(RestServlet.class);
 
 	private String authorization = null;
 
@@ -57,12 +61,12 @@ public abstract class RestServlet extends HttpServlet {
 					return;
 				}
 			}
-			
+
 			if (getAuthorization() != null
 					&& !getAuthorization().equals(
 							request.getHeader("Authorization")))
 				throw new Exception("Unauthorized.");
- 
+
 			run(req, resp);
 
 			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
@@ -82,6 +86,10 @@ public abstract class RestServlet extends HttpServlet {
 				RestUtils.cacheStoreJson(getContext(), req, resp);
 			}
 
+			log.info("EXT-HTTP: method:\"" + request.getMethod()
+					+ "\", path:\"" + request.getPathInfo() + "\", "
+					+ (req != null ? "\", request:" + req : "") + ", response:"
+					+ resp.toString());
 			RestUtils.writeJsonResp(response, resp, getContext(), getService());
 		} catch (Exception e) {
 			RestUtils.writeJsonError(request, response, e, req, resp,
