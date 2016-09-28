@@ -1,23 +1,23 @@
 package com.crivano.swaggerservlet;
 
-import org.json.JSONObject;
+import com.crivano.swaggerservlet.ISwaggerPetstore.PetPetIdGetRequest;
+import com.crivano.swaggerservlet.ISwaggerPetstore.PetPetIdGetResponse;
 
-import com.crivano.restservlet.IRestAction;
-
-public class PetPetIdGet implements IRestAction {
-
-	@Override
-	public void run(JSONObject req, JSONObject resp) throws Exception {
-		if ("123".equals(req.getString("petId"))) {
-			resp.put("color", "white");
-		} else {
-			throw new Exception("unknown petId");
-		}
-	}
+public class PetPetIdGet implements ISwaggerPetstore.IPetPetIdGet {
 
 	@Override
 	public String getContext() {
 		return "get color";
+	}
+
+	@Override
+	public void run(PetPetIdGetRequest req, PetPetIdGetResponse resp)
+			throws Exception {
+		if (Long.getLong("123").equals(req.petId)) {
+			resp.color = "white";
+		} else {
+			throw new Exception("unknown petId");
+		}
 	}
 
 }

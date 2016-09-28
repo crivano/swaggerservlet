@@ -11,41 +11,15 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.crivano.restservlet.ICacheableRestAction;
-import com.crivano.restservlet.RestServlet;
 import com.crivano.restservlet.RestUtils;
 
 public class SwaggerServlet extends HttpServlet {
 	private static final Logger log = LoggerFactory
 			.getLogger(SwaggerServlet.class);
-
-	@Override
-	public void doGet(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
-
-		// Return the swagger.yaml that is placed at
-		// src/main/webapp/{servletpath}/swagger.yaml
-		//
-		if (req.getPathInfo() != null
-				&& req.getPathInfo().endsWith("/swagger.yaml")) {
-			InputStream is = this.getServletContext().getResourceAsStream(
-					req.getServletPath() + req.getPathInfo());
-			if (is == null) {
-				is = this.getClass().getResourceAsStream("/swagger.yaml");
-			}
-			String sSwagger = RestUtils.convertStreamToString(is);
-			byte[] ab = sSwagger.getBytes();
-			resp.setContentType("text/x-yaml");
-			resp.setContentLength(ab.length);
-			resp.getOutputStream().write(ab);
-			resp.getOutputStream().flush();
-		} else
-			super.doGet(req, resp);
-	}
 
 	private static final long serialVersionUID = 4436503480265700847L;
 
@@ -53,49 +27,57 @@ public class SwaggerServlet extends HttpServlet {
 	private String actionpackage = null;
 
 	private class Prepared {
+		String actionName;
 		ISwaggerMethod action;
 		String context;
 		boolean cacheable;
+		Swagger.Path matchingPath;
+		Class<? extends ISwaggerRequest> clazzRequest;
+		Class<? extends ISwaggerResponse> clazzResponse;
+		ISwaggerRequest req;
+		ISwaggerResponse resp;
 	}
 
 	private ThreadLocal<Prepared> current = new ThreadLocal<Prepared>();
 
-	@Override
 	protected void prepare(HttpServletRequest request,
-			HttpServletResponse response, JSONObject req, JSONObject resp)
-			throws Exception {
+			HttpServletResponse response) throws Exception {
 		String requestMethod = request.getMethod();
 		String requestPathInfo = request.getPathInfo();
-		prepare(requestMethod, requestPathInfo, req);
+		prepare(requestMethod, requestPathInfo);
 	}
 
-	public void prepare(String requestMethod, String requestPathInfo,
-			JSONObject req) throws ClassNotFoundException,
-			NoSuchMethodException, InstantiationException,
-			IllegalAccessException, InvocationTargetException {
+	public void prepare(String requestMethod, String requestPathInfo)
+			throws ClassNotFoundException, NoSuchMethodException,
+			InstantiationException, IllegalAccessException,
+			InvocationTargetException {
 		Prepared p = new Prepared();
 		current.set(null);
 
 		String method = requestMethod.toLowerCase();
-		String path = swagger.checkRequest(requestPathInfo, method, req);
 
-		path = toCamelCase(path + " " + method);
+		p.matchingPath = swagger.checkRequestPath(requestPathInfo, method);
 
-		Class<?> clazz = Class.forName(actionpackage + "." + path);
+		p.actionName = toCamelCase(p.matchingPath.swaggerPath + " " + method);
+
+		Class<?> clazz = Class.forName(actionpackage + "." + p.actionName);
 		Constructor<?> ctor = clazz.getConstructor();
 		p.action = (ISwaggerMethod) ctor.newInstance();
 
 		p.context = p.action.getContext();
 		p.cacheable = p.action instanceof ICacheableRestAction;
 
+		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class
+				.forName(actionpackage + "." + swagger.getInterfaceName() + "$"
+						+ p.actionName + "Request");
+
+		p.clazzResponse = (Class<? extends ISwaggerResponse>) Class
+				.forName(actionpackage + "." + swagger.getInterfaceName() + "$"
+						+ p.actionName + "Response");
+		p.req = p.clazzRequest.newInstance();
+		p.resp = p.clazzResponse.newInstance();
+
 		current.set(p);
-	}
-
-	protected void run(ISwaggerRequest req, ISwaggerResponse resp)
-			throws Exception {
-		Prepared p = current.get();
-
-		p.action.run(req, resp);
 	}
 
 	public String toCamelCase(String path) {
@@ -142,46 +124,84 @@ public class SwaggerServlet extends HttpServlet {
 	private String authorization = null;
 
 	@Override
+	public void doGet(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
+
+		// Return the swagger.yaml that is placed at
+		// src/main/webapp/{servletpath}/swagger.yaml
+		//
+		if (req.getPathInfo() != null
+				&& req.getPathInfo().endsWith("/swagger.yaml")) {
+			InputStream is = this.getServletContext().getResourceAsStream(
+					req.getServletPath() + req.getPathInfo());
+			if (is == null) {
+				is = this.getClass().getResourceAsStream("/swagger.yaml");
+			}
+			String sSwagger = RestUtils.convertStreamToString(is);
+			byte[] ab = sSwagger.getBytes();
+			resp.setContentType("text/x-yaml");
+			resp.setContentLength(ab.length);
+			resp.getOutputStream().write(ab);
+			resp.getOutputStream().flush();
+		} else
+			doPost(req, resp);
+	}
+
+	@Override
 	public void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		JSONObject req = new JSONObject();
-		JSONObject resp = new JSONObject();
+		ISwaggerRequest req = null;
+		ISwaggerResponse resp = null;
 
 		try {
+			prepare(request, response);
+			Prepared prepared = current.get();
+			req = prepared.req;
+			resp = prepared.resp;
+
+			// Inject JSON body parameters
 			try {
 				if (request.getContentType() != null
 						&& request.getContentType().startsWith(
-								"application/json"))
-					req = RestUtils.getJsonReq(request, getContext());
+								"application/json")) {
+					req = SwaggerUtils.getJsonReq(request, getContext(),
+							prepared.clazzRequest);
+					prepared.req = req;
+				}
 			} catch (Exception e) {
 			}
 
+			// Inject form parameters
 			Enumeration paramNames = request.getParameterNames();
 			while (paramNames != null && paramNames.hasMoreElements()) {
 				String paramName = (String) paramNames.nextElement();
 				String[] paramValues = request.getParameterValues(paramName);
 				if (request.getParameter(paramName) instanceof String
-						&& !req.has(paramName))
-					req.put(paramName, request.getParameter(paramName));
+						&& !swagger.has(req, paramName))
+					swagger.set(req, paramName, request.getParameter(paramName));
 			}
 
+			// Inject querystring parameters
 			for (Object key : request.getParameterMap().keySet())
 				if (key instanceof String
 						&& request.getParameter((String) key) instanceof String
-						&& !req.has((String) key))
-					req.put((String) key, request.getParameter((String) key));
+						&& !Swagger.has(req, (String) key))
+					Swagger.set(req, (String) key,
+							request.getParameter((String) key));
 
-			prepare(request, response, req, resp);
+			// Inject path parameters
+			swagger.injectPathVariables(req, prepared.matchingPath);
 
 			corsHeaders(response);
 
 			if (isCacheable()) {
-				String cache = RestUtils.cacheRetrieveJson(getContext(), req);
-				if (cache != null) {
-					RestUtils.writeJsonRespFromCache(response, cache,
-							getContext(), getService());
-					return;
-				}
+				// String cache = RestUtils.cacheRetrieveJson(getContext(),
+				// req);
+				// if (cache != null) {
+				// RestUtils.writeJsonRespFromCache(response, cache,
+				// getContext(), getService());
+				// return;
+				// }
 			}
 
 			if (getAuthorization() != null
@@ -193,28 +213,34 @@ public class SwaggerServlet extends HttpServlet {
 
 			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
 
-			if (resp.has("content-type")) {
-				byte[] payload = RestUtils.base64Decode(resp
-						.getString("payload"));
-				response.setContentLength(payload.length);
-				response.setContentType(resp.getString("content-type"));
-				response.getOutputStream().write(payload);
-				response.getOutputStream().flush();
-				response.getOutputStream().close();
-				return;
-			}
+			// if (swagger.has(resp, "content-type")) {
+			// byte[] payload = RestUtils.base64Decode((String) swagger.get(
+			// resp, "payload"));
+			// response.setContentLength(payload.length);
+			// response.setContentType((String) swagger.get(resp,
+			// "content-type"));
+			// response.getOutputStream().write(payload);
+			// response.getOutputStream().flush();
+			// response.getOutputStream().close();
+			// return;
+			// }
 
-			if (isCacheable() && resp.optString("error", null) == null) {
-				RestUtils.cacheStoreJson(getContext(), req, resp);
+			if (isCacheable() && swagger.has(resp, "errormsg")) {
+				// RestUtils.cacheStoreJson(getContext(), req, resp);
 			}
 
 			log.info("EXT-HTTP: method:\"" + request.getMethod()
 					+ "\", path:\"" + request.getPathInfo() + "\", "
 					+ (req != null ? "\", request:" + req : "") + ", response:"
 					+ resp.toString());
-			RestUtils.writeJsonResp(response, resp, getContext(), getService());
+			SwaggerUtils.writeJsonResp(response, resp, getContext(),
+					getService());
 		} catch (Exception e) {
-			RestUtils.writeJsonError(request, response, e, req, resp,
+			if (e instanceof InvocationTargetException
+					&& ((InvocationTargetException) e).getTargetException() != null)
+				e = (Exception) ((InvocationTargetException) e)
+						.getTargetException();
+			SwaggerUtils.writeJsonError(request, response, e, req, resp,
 					getContext(), getService());
 		} finally {
 			response.getWriter().close();
@@ -243,10 +269,6 @@ public class SwaggerServlet extends HttpServlet {
 		response.addHeader("Access-Control-Allow-Headers", "Content-Type");
 	}
 
-	protected boolean isCacheable() {
-		return false;
-	};
-
 	public String getAuthorization() {
 		return authorization;
 	}
@@ -254,4 +276,14 @@ public class SwaggerServlet extends HttpServlet {
 	public void setAuthorization(String authorization) {
 		this.authorization = authorization;
 	}
+
+	public void run(ISwaggerRequest req, ISwaggerResponse resp)
+			throws Exception {
+		Prepared prepared = current.get();
+		Class<? extends ISwaggerMethod> clazzAction = prepared.action
+				.getClass();
+		clazzAction.getMethod("run", prepared.clazzRequest,
+				prepared.clazzResponse).invoke(prepared.action, req, resp);
+	}
+
 }

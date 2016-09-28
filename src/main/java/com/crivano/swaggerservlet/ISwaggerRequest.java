@@ -1,5 +1,5 @@
 package com.crivano.swaggerservlet;
 
-public interface ISwaggerRequest {
+public interface ISwaggerRequest extends ISwaggerModel {
 
 }

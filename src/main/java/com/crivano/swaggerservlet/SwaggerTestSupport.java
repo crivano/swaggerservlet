@@ -35,12 +35,11 @@ public abstract class SwaggerTestSupport extends TestCase {
 		ss.setActionPackage(packag);
 	}
 
-	public JSONObject run(String method, String pathInfo, JSONObject req) {
+	public void run(String method, String pathInfo, ISwaggerRequest req,
+			ISwaggerResponse resp) {
 		try {
-			JSONObject resp = new JSONObject();
-			ss.prepare(method, pathInfo, req);
+			ss.prepare(method, pathInfo);
 			ss.run(req, resp);
-			return resp;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

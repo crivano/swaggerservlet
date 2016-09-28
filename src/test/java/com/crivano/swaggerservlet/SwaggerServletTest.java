@@ -44,27 +44,27 @@ public class SwaggerServletTest extends TestCase {
 	}
 
 	public void testAction_Simple_Success() throws Exception {
-		JSONObject req = new JSONObject();
-		JSONObject resp = new JSONObject();
+		ISwaggerPetstore.PetPetIdGetRequest req = new ISwaggerPetstore.PetPetIdGetRequest();
+		ISwaggerPetstore.PetPetIdGetResponse resp = new ISwaggerPetstore.PetPetIdGetResponse();
 		HttpServletRequest request = mock(HttpServletRequest.class);
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
-		ss.prepare(request, null, req, resp);
+		ss.prepare(request, null);
 		ss.run(req, resp);
 
 		assertEquals("{\"color\":\"white\"}", resp.toString());
 	}
 
 	public void testAction_SimpleException_FailWithUnknownId() throws Exception {
-		JSONObject req = new JSONObject();
-		JSONObject resp = new JSONObject();
+		ISwaggerPetstore.PetPetIdPostRequest req = new ISwaggerPetstore.PetPetIdPostRequest();
+		ISwaggerPetstore.PetPetIdPostResponse resp = new ISwaggerPetstore.PetPetIdPostResponse();
 		HttpServletRequest request = mock(HttpServletRequest.class);
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/456");
 
 		try {
-			ss.prepare(request, null, req, resp);
+			ss.prepare(request, null);
 			ss.run(req, resp);
 			assertTrue(false);
 		} catch (Exception ex) {
@@ -77,6 +77,7 @@ public class SwaggerServletTest extends TestCase {
 		PrintWriter pw = new PrintWriter(sw);
 
 		HttpServletRequest request = mock(HttpServletRequest.class);
+		when(request.getProtocol()).thenReturn("HTTP 1.1");
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
@@ -85,7 +86,9 @@ public class SwaggerServletTest extends TestCase {
 
 		ss.doGet(request, response);
 
-		JSONObject resp = new JSONObject(sw.toString());
+		String body = sw.toString();
+
+		JSONObject resp = new JSONObject(body);
 
 		assertEquals("white", resp.get("color"));
 	}

@@ -1,6 +1,7 @@
 package com.crivano.swaggerservlet;
 
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,7 +10,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.yaml.snakeyaml.Yaml;
 
 @SuppressWarnings("unchecked")
@@ -17,12 +17,14 @@ public class Swagger {
 	private Map swagger = null;
 	private List<Pattern> regexs = null;
 	private List<String> swaggerPaths = null;
+	private String interfaceName = null;
 
 	public void loadFromInputStream(InputStream is) {
 		Yaml yaml = new Yaml();
 		this.swagger = (Map) yaml.load(is);
 		deference();
 		buildRegexs();
+		interfaceName = "I" + toCamelCase(getInfoTitle());
 	}
 
 	public void deference() {
@@ -76,9 +78,16 @@ public class Swagger {
 		return m;
 	}
 
-	public String checkRequest(String path, String method, JSONObject req) {
+	public class Path {
+		String swaggerPath;
+		String path;
+		String method;
+		Matcher matcher;
+	}
+
+	public Path checkRequestPath(String path, String method) {
 		String basePath = (String) this.swagger.get("basePath");
-		
+
 		if (path == null)
 			throw new RuntimeException("path can't be null");
 
@@ -92,29 +101,35 @@ public class Swagger {
 			Matcher m = p.matcher(path);
 			if (m.matches()) {
 				swaggerPath = swaggerPaths.get(i);
-				injectPathVariables(req, swaggerPath, m);
-				break;
+				Path pth = new Path();
+				pth.path = path;
+				pth.method = method;
+				pth.swaggerPath = swaggerPath;
+				pth.matcher = m;
+				return pth;
 			}
 			i++;
 		}
-		if (swaggerPath == null)
-			throw new RuntimeException("unknown path: " + path);
+		throw new RuntimeException("unknown path: " + path);
+	}
 
+	public void checkRequestParameters(Swagger.Path path, ISwaggerRequest req)
+			throws Exception {
 		Map<String, Object> paths = (Map<String, Object>) this.swagger
 				.get("paths");
 		for (String pathKey : paths.keySet()) {
-			if (!pathKey.equals(swaggerPath))
+			if (!pathKey.equals(path.swaggerPath))
 				continue;
 			Map<String, Object> func = (Map<String, Object>) ((Map<String, Object>) paths
-					.get(pathKey)).get(method);
+					.get(pathKey)).get(path.method);
 			if (func == null)
 				continue;
 
 			checkParams(func, req);
-			return pathKey;
+			return;
 		}
-		throw new RuntimeException("path/method undefined: " + swaggerPath
-				+ "/" + method);
+		throw new RuntimeException("path/method undefined: " + path.swaggerPath
+				+ "/" + path.method);
 	}
 
 	/**
@@ -123,17 +138,18 @@ public class Swagger {
 	 * @param req
 	 * @param swaggerPath
 	 * @param m
+	 * @throws Exception
 	 */
-	public void injectPathVariables(JSONObject req, String swaggerPath,
-			Matcher m) {
+	public void injectPathVariables(ISwaggerRequest req, Path path)
+			throws Exception {
 		Pattern pv = Pattern.compile("\\{(?<var>[^\\}]+)\\}");
-		Matcher mv = pv.matcher(swaggerPath);
+		Matcher mv = pv.matcher(path.swaggerPath);
 		while (mv.find()) {
 			String var = mv.group("var");
-			String value = m.group(var);
-			if (!req.has(var)) {
+			String value = path.matcher.group(var);
+			if (!has(req, var)) {
 				try {
-					req.put(var, value);
+					set(req, var, value);
 				} catch (JSONException e) {
 					throw new RuntimeException(e);
 				}
@@ -141,7 +157,8 @@ public class Swagger {
 		}
 	}
 
-	private void checkParams(Map<String, Object> func, JSONObject req) {
+	private void checkParams(Map<String, Object> func, ISwaggerRequest req)
+			throws Exception {
 		List<Map<String, Object>> parameters = (List<Map<String, Object>>) func
 				.get("parameters");
 		if (parameters == null)
@@ -149,7 +166,7 @@ public class Swagger {
 		for (Map<String, Object> param : parameters) {
 			if (param.containsKey("required")
 					&& (Boolean) param.get("required")
-					&& (req == null || !req.has((String) param.get("name")))) {
+					&& (req == null || !has(req, (String) param.get("name")))) {
 				throw new RuntimeException("required parameter is missing: "
 						+ param.get("name"));
 			}
@@ -160,7 +177,7 @@ public class Swagger {
 		return ((Map<String, Map<String, String>>) swagger).get("info").get(
 				"title");
 	}
-	
+
 	public String create(String packageName, boolean singleLine) {
 		StringBuilder sb = new StringBuilder();
 		if (packageName != null) {
@@ -170,10 +187,8 @@ public class Swagger {
 			sb.append("import java.util.List;");
 			sb.append("\n\n");
 		}
-		String title = toCamelCase((String) ((Map<String, String>) this.swagger
-				.get("info")).get("title"));
-		sb.append("interface I");
-		sb.append(title);
+		sb.append("interface ");
+		sb.append(this.interfaceName);
 		sb.append(" {\n");
 
 		Map<String, Object> definitions = (Map<String, Object>) this.swagger
@@ -360,5 +375,35 @@ public class Swagger {
 			sb.append(oneString.substring(1));
 		}
 		return sb.toString();
+	}
+
+	public static boolean has(ISwaggerModel model, String param)
+			throws Exception {
+		return get(model, param) != null;
+	}
+
+	public static Object get(ISwaggerModel model, String param)
+			throws Exception {
+		Class<? extends ISwaggerModel> clazz = model.getClass();
+
+		Field field = clazz.getDeclaredField(param);
+		if (field == null)
+			return false;
+		return field.get(model);
+	}
+
+	public static void set(ISwaggerModel model, String param, String value)
+			throws Exception {
+		Class<? extends ISwaggerModel> clazz = model.getClass();
+
+		Field field = clazz.getDeclaredField(param);
+		Object v = value;
+		if (field.getType() == Long.class)
+			v = new Long(value);
+		field.set(model, v);
+	}
+
+	public String getInterfaceName() {
+		return interfaceName;
 	}
 }
