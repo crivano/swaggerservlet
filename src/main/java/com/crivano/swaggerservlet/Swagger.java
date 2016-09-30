@@ -386,9 +386,13 @@ public class Swagger {
 			throws Exception {
 		Class<? extends ISwaggerModel> clazz = model.getClass();
 
-		Field field = clazz.getDeclaredField(param);
-		if (field == null)
-			return false;
+		Field field;
+		try {
+			field = clazz.getDeclaredField(param);
+		} catch (NoSuchFieldException ex) {
+			throw new Exception("unknown parameter: " + param, ex);
+		}
+		field.setAccessible(true);
 		return field.get(model);
 	}
 
@@ -396,10 +400,16 @@ public class Swagger {
 			throws Exception {
 		Class<? extends ISwaggerModel> clazz = model.getClass();
 
-		Field field = clazz.getDeclaredField(param);
+		Field field;
+		try {
+			field = clazz.getDeclaredField(param);
+		} catch (NoSuchFieldException ex) {
+			throw new Exception("unknown parameter: " + param, ex);
+		}
 		Object v = value;
 		if (field.getType() == Long.class)
 			v = new Long(value);
+		field.setAccessible(true);
 		field.set(model, v);
 	}
 

@@ -159,38 +159,7 @@ public class SwaggerServlet extends HttpServlet {
 			req = prepared.req;
 			resp = prepared.resp;
 
-			// Inject JSON body parameters
-			try {
-				if (request.getContentType() != null
-						&& request.getContentType().startsWith(
-								"application/json")) {
-					req = SwaggerUtils.getJsonReq(request, getContext(),
-							prepared.clazzRequest);
-					prepared.req = req;
-				}
-			} catch (Exception e) {
-			}
-
-			// Inject form parameters
-			Enumeration paramNames = request.getParameterNames();
-			while (paramNames != null && paramNames.hasMoreElements()) {
-				String paramName = (String) paramNames.nextElement();
-				String[] paramValues = request.getParameterValues(paramName);
-				if (request.getParameter(paramName) instanceof String
-						&& !swagger.has(req, paramName))
-					swagger.set(req, paramName, request.getParameter(paramName));
-			}
-
-			// Inject querystring parameters
-			for (Object key : request.getParameterMap().keySet())
-				if (key instanceof String
-						&& request.getParameter((String) key) instanceof String
-						&& !Swagger.has(req, (String) key))
-					Swagger.set(req, (String) key,
-							request.getParameter((String) key));
-
-			// Inject path parameters
-			swagger.injectPathVariables(req, prepared.matchingPath);
+			req = injectVariables(request, req);
 
 			corsHeaders(response);
 
@@ -206,7 +175,7 @@ public class SwaggerServlet extends HttpServlet {
 
 			if (getAuthorization() != null
 					&& !getAuthorization().equals(
-							request.getHeader("Authorization")))
+							getAuthorizationFromHeader(request)))
 				throw new Exception("Unauthorized.");
 
 			run(req, resp);
@@ -247,6 +216,62 @@ public class SwaggerServlet extends HttpServlet {
 		}
 	}
 
+	public String getAuthorizationFromHeader(HttpServletRequest request) {
+		String s = request.getHeader("Authorization");
+		if (s == null)
+			return null;
+		s = s.trim();
+
+		if (s.startsWith("Basic ")) {
+			String userpass = new String(SwaggerUtils.base64Decode(s
+					.substring(6)));
+			s = userpass.split(":")[1];
+		}
+		return s;
+
+	}
+
+	public ISwaggerRequest injectVariables(HttpServletRequest request,
+			ISwaggerRequest req) throws Exception {
+		Prepared prepared = current.get();
+
+		// Inject JSON body parameters
+		try {
+			if (request.getContentType() != null
+					&& request.getContentType().startsWith("application/json")) {
+				ISwaggerRequest reqFromJson = SwaggerUtils.getJsonReq(request,
+						getContext(), prepared.clazzRequest);
+				if (reqFromJson != null) {
+					req = reqFromJson;
+					prepared.req = req;
+				}
+			}
+		} catch (Exception e) {
+		}
+
+		// Inject form parameters
+		Enumeration paramNames = request.getParameterNames();
+		while (paramNames != null && paramNames.hasMoreElements()) {
+			String paramName = (String) paramNames.nextElement();
+			String[] paramValues = request.getParameterValues(paramName);
+			if (request.getParameter(paramName) instanceof String
+					&& !swagger.has(req, paramName))
+				swagger.set(req, paramName, request.getParameter(paramName));
+		}
+
+		// Inject querystring parameters
+		for (Object key : request.getParameterMap().keySet())
+			if (key instanceof String
+					&& request.getParameter((String) key) instanceof String
+					&& !Swagger.has(req, (String) key))
+				Swagger.set(req, (String) key,
+						request.getParameter((String) key));
+
+		// Inject path parameters
+		swagger.injectPathVariables(req, prepared.matchingPath);
+		return req;
+	}
+
 	@Override
 	public void doPut(HttpServletRequest req, HttpServletResponse resp)
 			throws ServletException, IOException {
@@ -282,8 +307,15 @@ public class SwaggerServlet extends HttpServlet {
 		Prepared prepared = current.get();
 		Class<? extends ISwaggerMethod> clazzAction = prepared.action
 				.getClass();
-		clazzAction.getMethod("run", prepared.clazzRequest,
-				prepared.clazzResponse).invoke(prepared.action, req, resp);
+		try {
+			clazzAction.getMethod("run", prepared.clazzRequest,
+					prepared.clazzResponse).invoke(prepared.action, req, resp);
+		} catch (InvocationTargetException ex) {
+			if (ex.getCause() instanceof Exception)
+				throw (Exception) ex.getCause();
+			else
+				throw ex;
+		}
 	}
 
 }

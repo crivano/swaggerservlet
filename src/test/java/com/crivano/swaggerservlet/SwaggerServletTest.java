@@ -14,6 +14,8 @@ import junit.framework.TestCase;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.crivano.swaggerservlet.ISwaggerPetstore.PetPetIdGetRequest;
+
 /**
  * Unit test for simple App.
  */
@@ -51,14 +53,15 @@ public class SwaggerServletTest extends TestCase {
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
 		ss.prepare(request, null);
+		req = (PetPetIdGetRequest) ss.injectVariables(request, req);
 		ss.run(req, resp);
 
-		assertEquals("{\"color\":\"white\"}", resp.toString());
+		assertEquals("white", resp.color);
 	}
 
 	public void testAction_SimpleException_FailWithUnknownId() throws Exception {
-		ISwaggerPetstore.PetPetIdPostRequest req = new ISwaggerPetstore.PetPetIdPostRequest();
-		ISwaggerPetstore.PetPetIdPostResponse resp = new ISwaggerPetstore.PetPetIdPostResponse();
+		ISwaggerPetstore.PetPetIdGetRequest req = new ISwaggerPetstore.PetPetIdGetRequest();
+		ISwaggerPetstore.PetPetIdGetResponse resp = new ISwaggerPetstore.PetPetIdGetResponse();
 		HttpServletRequest request = mock(HttpServletRequest.class);
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/456");

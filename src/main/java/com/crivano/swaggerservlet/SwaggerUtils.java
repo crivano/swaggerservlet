@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 
 import javax.servlet.http.HttpServletRequest;
@@ -16,15 +17,47 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import com.crivano.restservlet.IPresentableException;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
 
 public class SwaggerUtils {
 	private static final Logger log = LoggerFactory
 			.getLogger(SwaggerUtils.class);
 
-	private static Gson gson = new Gson();
+	public static final Gson gson = new GsonBuilder()
+			.registerTypeHierarchyAdapter(byte[].class,
+					new ByteArrayToBase64TypeAdapter()).create();
+
+	private static class ByteArrayToBase64TypeAdapter implements
+			JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
+		public byte[] deserialize(JsonElement json, Type typeOfT,
+				JsonDeserializationContext context) throws JsonParseException {
+			return base64Decode(json.getAsString());
+		}
+
+		public JsonElement serialize(byte[] src, Type typeOfSrc,
+				JsonSerializationContext context) {
+			return new JsonPrimitive(base64Encode(src));
+		}
+	}
+
+	public static String base64Encode(byte[] bytes) {
+		return Base64Coder.encodeLines(bytes, 0, bytes.length, 4000, "");
+	}
+
+	public static byte[] base64Decode(String b64) {
+		return Base64Coder.decodeLines(b64);
+	}
 
 	private static String getBody(HttpServletRequest request)
 			throws IOException {

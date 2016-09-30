@@ -74,6 +74,7 @@ public class SwaggerTest extends TestCase {
 			throws Exception {
 		ISwaggerPetstore.PetPetIdGetRequest req = new ISwaggerPetstore.PetPetIdGetRequest();
 		Swagger.Path path = sv.checkRequestPath("/pet/123", "get");
+		sv.injectPathVariables(req, path);
 		sv.checkRequestParameters(path, req);
 	}
 
@@ -82,6 +83,7 @@ public class SwaggerTest extends TestCase {
 		ISwaggerPetstore.PetPetIdPostRequest req = new ISwaggerPetstore.PetPetIdPostRequest();
 		req.name = "name";
 		Swagger.Path path = sv.checkRequestPath("/pet/123", "post");
+		sv.injectPathVariables(req, path);
 		sv.checkRequestParameters(path, req);
 	}
 
