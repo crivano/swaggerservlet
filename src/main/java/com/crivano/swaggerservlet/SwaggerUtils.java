@@ -7,7 +7,10 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Type;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -34,9 +37,15 @@ public class SwaggerUtils {
 	private static final Logger log = LoggerFactory
 			.getLogger(SwaggerUtils.class);
 
+	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(
+			ISO_FORMAT);
+
 	public static final Gson gson = new GsonBuilder()
 			.registerTypeHierarchyAdapter(byte[].class,
-					new ByteArrayToBase64TypeAdapter()).create();
+					new ByteArrayToBase64TypeAdapter())
+			.registerTypeHierarchyAdapter(Date.class,
+					new DateToStringTypeAdapter()).create();
 
 	private static class ByteArrayToBase64TypeAdapter implements
 			JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
@@ -48,6 +57,19 @@ public class SwaggerUtils {
 		public JsonElement serialize(byte[] src, Type typeOfSrc,
 				JsonSerializationContext context) {
 			return new JsonPrimitive(base64Encode(src));
+		}
+	}
+
+	private static class DateToStringTypeAdapter implements
+			JsonSerializer<Date>, JsonDeserializer<Date> {
+		public Date deserialize(JsonElement json, Type typeOfT,
+				JsonDeserializationContext context) throws JsonParseException {
+			return parse(json.getAsString());
+		}
+
+		public JsonElement serialize(Date src, Type typeOfSrc,
+				JsonSerializationContext context) {
+			return new JsonPrimitive(format(src));
 		}
 	}
 
@@ -97,7 +119,7 @@ public class SwaggerUtils {
 			String context, Class<? extends ISwaggerRequest> clazz) {
 		try {
 			String sJson = getBody(request);
-			ISwaggerRequest req = gson.fromJson(sJson, clazz);
+			ISwaggerRequest req = fromJson(sJson, clazz);
 			if (context != null)
 				log.debug(context + " req: " + sJson);
 			return req;
@@ -106,16 +128,25 @@ public class SwaggerUtils {
 		}
 	}
 
+	public static ISwaggerRequest fromJson(String sJson,
+			Class<? extends ISwaggerRequest> clazz) {
+		return gson.fromJson(sJson, clazz);
+	}
+
 	public static void writeJsonResp(HttpServletResponse response,
 			ISwaggerResponse resp, String context, String service)
 			throws JSONException, IOException {
-		String sJson = gson.toJson(resp);
+		String sJson = toJson(resp);
 		if (context != null)
 			log.debug(context + " resp: " + sJson);
 
 		response.setContentType("application/json; charset=UTF-8");
 		response.setCharacterEncoding("UTF-8");
 		response.getWriter().println(sJson);
+	}
+
+	public static String toJson(ISwaggerResponse resp) {
+		return gson.toJson(resp);
 	}
 
 	public static void writeJsonError(HttpServletRequest request,
@@ -195,6 +226,18 @@ public class SwaggerUtils {
 		// errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
 		// }
 		return errstack;
+	}
+
+	public static String format(Date date) {
+		return isoFormatter.format(date);
+	}
+
+	public static Date parse(String date) {
+		try {
+			return isoFormatter.parse(date);
+		} catch (ParseException e) {
+			return null;
+		}
 	}
 
 }
