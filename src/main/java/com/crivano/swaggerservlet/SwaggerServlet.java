@@ -182,17 +182,20 @@ public class SwaggerServlet extends HttpServlet {
 
 			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
 
-			// if (swagger.has(resp, "content-type")) {
-			// byte[] payload = RestUtils.base64Decode((String) swagger.get(
-			// resp, "payload"));
-			// response.setContentLength(payload.length);
-			// response.setContentType((String) swagger.get(resp,
-			// "content-type"));
-			// response.getOutputStream().write(payload);
-			// response.getOutputStream().flush();
-			// response.getOutputStream().close();
-			// return;
-			// }
+			try {
+				if (swagger.has(resp, "contenttype")) {
+					byte[] payload = (byte[]) swagger.get(resp, "payload");
+					response.setContentLength(payload.length);
+					response.setContentType((String) swagger.get(resp,
+							"contenttype"));
+					response.getOutputStream().write(payload);
+					response.getOutputStream().flush();
+					response.getOutputStream().close();
+					return;
+				}
+			} catch (Exception ex) {
+
+			}
 
 			if (isCacheable() && swagger.has(resp, "errormsg")) {
 				// RestUtils.cacheStoreJson(getContext(), req, resp);
