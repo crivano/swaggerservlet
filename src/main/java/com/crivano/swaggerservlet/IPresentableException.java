@@ -1,4 +1,4 @@
-package com.crivano.restservlet;
+package com.crivano.swaggerservlet;
 
 public interface IPresentableException {
 

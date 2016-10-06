@@ -8,8 +8,6 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.crivano.restservlet.RestUtils;
-
 public class HTTPMockFromJSON implements IHTTP {
 	private static final Logger log = LoggerFactory
 			.getLogger(HTTPMockFromJSON.class);
@@ -17,7 +15,7 @@ public class HTTPMockFromJSON implements IHTTP {
 	JSONObject map = new JSONObject();
 
 	public void add(String url, InputStream is) throws JSONException {
-		String s = RestUtils.convertStreamToString(is);
+		String s = SwaggerUtils.convertStreamToString(is);
 		JSONObject o = new JSONObject(s);
 		map.put(url, o);
 	}

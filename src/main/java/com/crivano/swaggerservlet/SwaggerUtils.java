@@ -13,8 +13,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -26,13 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
-import com.crivano.restservlet.DefaultHTTP;
-import com.crivano.restservlet.DefaultMemCache;
-import com.crivano.restservlet.IHTTP;
-import com.crivano.restservlet.IMemCache;
-import com.crivano.restservlet.IPresentableException;
-import com.crivano.restservlet.RestException;
-import com.crivano.restservlet.RestUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
@@ -276,6 +268,46 @@ public class SwaggerUtils {
 			return isoFormatter.parse(date);
 		} catch (ParseException e) {
 			return null;
+		}
+	}
+
+	public static void memCacheStore(String key, byte[] ba) {
+		memcache.store(key, ba);
+	}
+
+	public static byte[] memCacheRetrieve(String key) {
+		return memcache.retrieve(key);
+	}
+
+	public static byte[] memCacheRemove(String key) {
+		return memcache.remove(key);
+	}
+
+	public static String dbStore(String payload) {
+		String id = UUID.randomUUID().toString();
+		memCacheStore(id, payload.getBytes());
+		return id;
+	}
+
+	public static String dbRetrieve(String id, boolean remove) {
+		byte[] ba = null;
+		if (remove)
+			ba = memCacheRemove(id);
+		else
+			ba = memCacheRetrieve(id);
+		if (ba == null)
+			return null;
+		String s = new String(ba);
+
+		if (s == null || s.trim().length() == 0)
+			return null;
+
+		return s;
+	}
+
+	public static String convertStreamToString(java.io.InputStream is) {
+		try (java.util.Scanner s = new java.util.Scanner(is)) {
+			return s.useDelimiter("\\A").hasNext() ? s.next() : "";
 		}
 	}
 

@@ -1,4 +1,4 @@
-package com.crivano.restservlet;
+package com.crivano.swaggerservlet;
 
 public class PresentableException extends Exception implements IPresentableException {
 

@@ -14,9 +14,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.crivano.restservlet.ICacheableRestAction;
-import com.crivano.restservlet.RestUtils;
-
 public class SwaggerServlet extends HttpServlet {
 	private static final Logger log = LoggerFactory
 			.getLogger(SwaggerServlet.class);
@@ -65,7 +62,7 @@ public class SwaggerServlet extends HttpServlet {
 		p.action = (ISwaggerMethod) ctor.newInstance();
 
 		p.context = p.action.getContext();
-		p.cacheable = p.action instanceof ICacheableRestAction;
+		p.cacheable = p.action instanceof ISwaggerCacheableMethod;
 
 		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class
 				.forName(actionpackage + "." + swagger.getInterfaceName() + "$"
@@ -137,7 +134,7 @@ public class SwaggerServlet extends HttpServlet {
 			if (is == null) {
 				is = this.getClass().getResourceAsStream("/swagger.yaml");
 			}
-			String sSwagger = RestUtils.convertStreamToString(is);
+			String sSwagger = SwaggerUtils.convertStreamToString(is);
 			byte[] ab = sSwagger.getBytes();
 			resp.setContentType("text/x-yaml");
 			resp.setContentLength(ab.length);
@@ -197,7 +194,7 @@ public class SwaggerServlet extends HttpServlet {
 
 			}
 
-			if (isCacheable() && swagger.has(resp, "errormsg")) {
+			if (isCacheable()) {
 				// RestUtils.cacheStoreJson(getContext(), req, resp);
 			}
 
