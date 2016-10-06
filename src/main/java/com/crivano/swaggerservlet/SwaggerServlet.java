@@ -208,10 +208,6 @@ public class SwaggerServlet extends HttpServlet {
 			SwaggerUtils.writeJsonResp(response, resp, getContext(),
 					getService());
 		} catch (Exception e) {
-			if (e instanceof InvocationTargetException
-					&& ((InvocationTargetException) e).getTargetException() != null)
-				e = (Exception) ((InvocationTargetException) e)
-						.getTargetException();
 			SwaggerUtils.writeJsonError(request, response, e, req, resp,
 					getContext(), getService());
 		} finally {

@@ -11,6 +11,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -22,7 +26,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
+import com.crivano.restservlet.DefaultHTTP;
+import com.crivano.restservlet.DefaultMemCache;
+import com.crivano.restservlet.IHTTP;
+import com.crivano.restservlet.IMemCache;
 import com.crivano.restservlet.IPresentableException;
+import com.crivano.restservlet.RestException;
+import com.crivano.restservlet.RestUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
@@ -36,6 +46,31 @@ import com.google.gson.JsonSerializer;
 public class SwaggerUtils {
 	private static final Logger log = LoggerFactory
 			.getLogger(SwaggerUtils.class);
+
+	private static Map<String, String> properties = new HashMap<>();
+
+	private static IMemCache memcache = new DefaultMemCache();
+
+	public static void setCache(IMemCache memcache) {
+		SwaggerUtils.memcache = memcache;
+	}
+
+	public static String getProperty(String propertyName, String defaultValue) {
+		if (properties.containsKey(propertyName))
+			return properties.get(propertyName);
+		String s = System.getProperty(propertyName);
+		if (s != null)
+			return s;
+		s = System.getenv("PROP_"
+				+ propertyName.replace(".", "_").toUpperCase());
+		if (s != null)
+			return s;
+		return defaultValue;
+	}
+
+	public static void setProperty(String propertyName, String value) {
+		properties.put(propertyName, value);
+	}
 
 	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(
@@ -74,10 +109,14 @@ public class SwaggerUtils {
 	}
 
 	public static String base64Encode(byte[] bytes) {
+		if (bytes == null)
+			return null;
 		return Base64Coder.encodeLines(bytes, 0, bytes.length, 4000, "");
 	}
 
 	public static byte[] base64Decode(String b64) {
+		if (b64 == null)
+			return null;
 		return Base64Coder.decodeLines(b64);
 	}
 
@@ -119,7 +158,7 @@ public class SwaggerUtils {
 			String context, Class<? extends ISwaggerRequest> clazz) {
 		try {
 			String sJson = getBody(request);
-			ISwaggerRequest req = fromJson(sJson, clazz);
+			ISwaggerRequest req = (ISwaggerRequest) fromJson(sJson, clazz);
 			if (context != null)
 				log.debug(context + " req: " + sJson);
 			return req;
@@ -128,8 +167,8 @@ public class SwaggerUtils {
 		}
 	}
 
-	public static ISwaggerRequest fromJson(String sJson,
-			Class<? extends ISwaggerRequest> clazz) {
+	public static <T extends ISwaggerModel> T fromJson(String sJson,
+			Class<T> clazz) {
 		return gson.fromJson(sJson, clazz);
 	}
 
@@ -145,7 +184,7 @@ public class SwaggerUtils {
 		response.getWriter().println(sJson);
 	}
 
-	public static String toJson(ISwaggerResponse resp) {
+	public static String toJson(ISwaggerModel resp) {
 		return gson.toJson(resp);
 	}
 
