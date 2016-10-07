@@ -2,37 +2,26 @@ package com.crivano.swaggerservlet;
 
 import junit.framework.TestCase;
 
-import org.json.JSONObject;
-
 public abstract class SwaggerTestSupport extends TestCase {
 	private SwaggerServlet ss = null;
 
-	protected abstract String getPackage();
+	protected abstract Class getAPI();
 
-	protected String getSwaggerFilePathName() {
-		return "/swagger.yaml";
-	}
+	protected abstract String getPackage();
 
 	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
-		buildTestServlet(getPackage(), getSwaggerFilePathName());
-	}
 
-	@SuppressWarnings("serial")
-	public void buildTestServlet(String packag, String file) {
 		ss = new SwaggerServlet() {
 			@Override
 			protected String getContext() {
 				return "test";
 			}
 		};
-		Swagger sv = null;
-		sv = new Swagger();
-		sv.loadFromInputStream(this.getClass().getResourceAsStream(file));
 
-		ss.setSwagger(sv);
-		ss.setActionPackage(packag);
+		ss.setAPI(getAPI());
+		ss.setActionPackage(getPackage());
 	}
 
 	public void run(String method, String pathInfo, ISwaggerRequest req,

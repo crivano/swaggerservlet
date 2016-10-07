@@ -65,12 +65,14 @@ public class SwaggerServlet extends HttpServlet {
 		p.cacheable = p.action instanceof ISwaggerCacheableMethod;
 
 		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class
-				.forName(actionpackage + "." + swagger.getInterfaceName() + "$"
-						+ p.actionName + "Request");
+				.forName(swagger.getInterfacePackage() + "."
+						+ swagger.getInterfaceName() + "$" + p.actionName
+						+ "Request");
 
 		p.clazzResponse = (Class<? extends ISwaggerResponse>) Class
-				.forName(actionpackage + "." + swagger.getInterfaceName() + "$"
-						+ p.actionName + "Response");
+				.forName(swagger.getInterfacePackage() + "."
+						+ swagger.getInterfaceName() + "$" + p.actionName
+						+ "Response");
 		p.req = p.clazzRequest.newInstance();
 		p.resp = p.clazzResponse.newInstance();
 
@@ -129,8 +131,7 @@ public class SwaggerServlet extends HttpServlet {
 		//
 		if (req.getPathInfo() != null
 				&& req.getPathInfo().endsWith("/swagger.yaml")) {
-			InputStream is = this.getServletContext().getResourceAsStream(
-					req.getServletPath() + req.getPathInfo());
+			InputStream is = getSwaggerYamlAsStream();
 			if (is == null) {
 				is = this.getClass().getResourceAsStream("/swagger.yaml");
 			}
@@ -142,6 +143,15 @@ public class SwaggerServlet extends HttpServlet {
 			resp.getOutputStream().flush();
 		} else
 			doPost(req, resp);
+	}
+
+	public InputStream getSwaggerYamlAsStream() {
+		ClassLoader classLoader = Thread.currentThread()
+				.getContextClassLoader();
+		String path = swagger.getInterfacePackage().replace(".", "/");
+		InputStream is = classLoader
+				.getResourceAsStream(path + "/swagger.yaml");
+		return is;
 	}
 
 	@Override
@@ -312,6 +322,15 @@ public class SwaggerServlet extends HttpServlet {
 			else
 				throw ex;
 		}
+	}
+
+	public void setAPI(Class clazzInterface) {
+		Swagger sw = new Swagger();
+		sw.setInterfaceName(clazzInterface.getSimpleName());
+		sw.setInterfacePackage(clazzInterface.getPackage().getName());
+		setSwagger(sw);
+		InputStream is = getSwaggerYamlAsStream();
+		sw.loadFromInputStream(is);
 	}
 
 }

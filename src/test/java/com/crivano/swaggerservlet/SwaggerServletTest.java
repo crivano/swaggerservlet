@@ -33,11 +33,7 @@ public class SwaggerServletTest extends TestCase {
 				return "test";
 			}
 		};
-		sv = new Swagger();
-		sv.loadFromInputStream(this.getClass().getResourceAsStream(
-				"swagger.yaml"));
-
-		ss.setSwagger(sv);
+		ss.setAPI(ISwaggerPetstore.class);
 		ss.setActionPackage("com.crivano.swaggerservlet");
 	}
 

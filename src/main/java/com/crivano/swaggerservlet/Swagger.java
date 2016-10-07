@@ -18,13 +18,13 @@ public class Swagger {
 	private List<Pattern> regexs = null;
 	private List<String> swaggerPaths = null;
 	private String interfaceName = null;
+	private String interfacePackage = null;
 
 	public void loadFromInputStream(InputStream is) {
 		Yaml yaml = new Yaml();
 		this.swagger = (Map) yaml.load(is);
 		deference();
 		buildRegexs();
-		interfaceName = "I" + toCamelCase(getInfoTitle());
 	}
 
 	public void deference() {
@@ -188,7 +188,7 @@ public class Swagger {
 			sb.append("\n\n");
 		}
 		sb.append("interface ");
-		sb.append(this.interfaceName);
+		sb.append(this.getInterfaceName());
 		sb.append(" {\n");
 
 		Map<String, Object> definitions = (Map<String, Object>) this.swagger
@@ -415,5 +415,17 @@ public class Swagger {
 
 	public String getInterfaceName() {
 		return interfaceName;
+	}
+
+	public void setInterfaceName(String interfaceName) {
+		this.interfaceName = interfaceName;
+	}
+
+	public String getInterfacePackage() {
+		return interfacePackage;
+	}
+
+	public void setInterfacePackage(String interfacePackage) {
+		this.interfacePackage = interfacePackage;
 	}
 }
