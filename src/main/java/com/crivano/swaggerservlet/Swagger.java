@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.json.JSONException;
 import org.yaml.snakeyaml.Yaml;
 
 @SuppressWarnings("unchecked")
@@ -28,16 +27,13 @@ public class Swagger {
 	}
 
 	public void deference() {
-		Map<String, Object> paths = (Map<String, Object>) this.swagger
-				.get("paths");
+		Map<String, Object> paths = (Map<String, Object>) this.swagger.get("paths");
 
 		for (String key : paths.keySet()) {
 			Map<String, Object> path = (Map<String, Object>) paths.get(key);
 			for (String funcKey : path.keySet()) {
-				Map<String, Object> func = (Map<String, Object>) path
-						.get(funcKey);
-				List<Map<String, Object>> parameters = (List<Map<String, Object>>) func
-						.get("parameters");
+				Map<String, Object> func = (Map<String, Object>) path.get(funcKey);
+				List<Map<String, Object>> parameters = (List<Map<String, Object>>) func.get("parameters");
 				for (int i = 0; i < parameters.size(); i++) {
 					Map<String, Object> param = parameters.get(i);
 					if (param.containsKey("$ref")) {
@@ -53,13 +49,10 @@ public class Swagger {
 		regexs = new ArrayList<>();
 		swaggerPaths = new ArrayList<>();
 
-		Map<String, Object> paths = (Map<String, Object>) this.swagger
-				.get("paths");
+		Map<String, Object> paths = (Map<String, Object>) this.swagger.get("paths");
 
 		for (String pathKey : paths.keySet()) {
-			String s = "^"
-					+ pathKey.replaceAll("\\{([^\\}]+)\\}", "(?<$1>[^/]+)")
-					+ "$";
+			String s = "^" + pathKey.replaceAll("\\{([^\\}]+)\\}", "(?<$1>[^/]+)") + "$";
 			regexs.add(Pattern.compile(s));
 			swaggerPaths.add(pathKey);
 		}
@@ -113,23 +106,20 @@ public class Swagger {
 		throw new RuntimeException("unknown path: " + path);
 	}
 
-	public void checkRequestParameters(Swagger.Path path, ISwaggerRequest req)
-			throws Exception {
-		Map<String, Object> paths = (Map<String, Object>) this.swagger
-				.get("paths");
+	public void checkRequestParameters(Swagger.Path path, ISwaggerRequest req) throws Exception {
+		Map<String, Object> paths = (Map<String, Object>) this.swagger.get("paths");
 		for (String pathKey : paths.keySet()) {
 			if (!pathKey.equals(path.swaggerPath))
 				continue;
-			Map<String, Object> func = (Map<String, Object>) ((Map<String, Object>) paths
-					.get(pathKey)).get(path.method);
+			Map<String, Object> func = (Map<String, Object>) ((Map<String, Object>) paths.get(pathKey))
+					.get(path.method);
 			if (func == null)
 				continue;
 
 			checkParams(func, req);
 			return;
 		}
-		throw new RuntimeException("path/method undefined: " + path.swaggerPath
-				+ "/" + path.method);
+		throw new RuntimeException("path/method undefined: " + path.swaggerPath + "/" + path.method);
 	}
 
 	/**
@@ -140,8 +130,7 @@ public class Swagger {
 	 * @param m
 	 * @throws Exception
 	 */
-	public void injectPathVariables(ISwaggerRequest req, Path path)
-			throws Exception {
+	public void injectPathVariables(ISwaggerRequest req, Path path) throws Exception {
 		Pattern pv = Pattern.compile("\\{(?<var>[^\\}]+)\\}");
 		Matcher mv = pv.matcher(path.swaggerPath);
 		while (mv.find()) {
@@ -150,77 +139,61 @@ public class Swagger {
 			if (!has(req, var)) {
 				try {
 					set(req, var, value);
-				} catch (JSONException e) {
+				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
 			}
 		}
 	}
 
-	private void checkParams(Map<String, Object> func, ISwaggerRequest req)
-			throws Exception {
-		List<Map<String, Object>> parameters = (List<Map<String, Object>>) func
-				.get("parameters");
+	private void checkParams(Map<String, Object> func, ISwaggerRequest req) throws Exception {
+		List<Map<String, Object>> parameters = (List<Map<String, Object>>) func.get("parameters");
 		if (parameters == null)
 			return;
 		for (Map<String, Object> param : parameters) {
-			if (param.containsKey("required")
-					&& (Boolean) param.get("required")
+			if (param.containsKey("required") && (Boolean) param.get("required")
 					&& (req == null || !has(req, (String) param.get("name")))) {
-				throw new RuntimeException("required parameter is missing: "
-						+ param.get("name"));
+				throw new RuntimeException("required parameter is missing: " + param.get("name"));
 			}
 		}
 	}
 
 	public String getInfoTitle() {
-		return ((Map<String, Map<String, String>>) swagger).get("info").get(
-				"title");
+		return ((Map<String, Map<String, String>>) swagger).get("info").get("title");
 	}
 
-	public String create(String packageName, boolean singleLine) {
+	public String create(boolean singleLine) {
 		StringBuilder sb = new StringBuilder();
-		if (packageName != null) {
-			sb.append("package ");
-			sb.append(packageName);
-			sb.append(";\n\n");
-			sb.append("import java.util.List;");
-			sb.append("\n\n");
-		}
-		sb.append("interface ");
-		sb.append(this.getInterfaceName());
+		String title = toCamelCase((String) ((Map<String, String>) this.swagger.get("info")).get("title"));
+		sb.append("public interface I");
+		sb.append(title);
 		sb.append(" {\n");
 
-		Map<String, Object> definitions = (Map<String, Object>) this.swagger
-				.get("definitions");
+		Map<String, Object> definitions = (Map<String, Object>) this.swagger.get("definitions");
 
 		// Object Definitions
 		for (String definitionKey : definitions.keySet()) {
-			Map<String, Object> definition = (Map<String, Object>) definitions
-					.get(definitionKey);
-			appendClass(sb, definitionKey, definition);
+			Map<String, Object> definition = (Map<String, Object>) definitions.get(definitionKey);
+			appendClass(sb, definitionKey + " implements ISwaggerModel", definition);
 		}
 
-		Map<String, Object> paths = (Map<String, Object>) this.swagger
-				.get("paths");
+		Map<String, Object> paths = (Map<String, Object>) this.swagger.get("paths");
 
 		for (String pathKey : paths.keySet()) {
 			Map<String, Object> path = (Map<String, Object>) paths.get(pathKey);
 			for (String funcKey : path.keySet()) {
-				Map<String, Object> func = (Map<String, Object>) path
-						.get(funcKey);
+				Map<String, Object> func = (Map<String, Object>) path.get(funcKey);
 				String method = toCamelCase(pathKey + " " + funcKey);
 
 				// Request
-				List<Map<String, Object>> parameters = (List<Map<String, Object>>) func
-						.get("parameters");
-				sb.append("\tclass ");
+				List<Map<String, Object>> parameters = (List<Map<String, Object>>) func.get("parameters");
+				sb.append("\tpublic class ");
 				sb.append(method);
 				sb.append("Request implements ISwaggerRequest {\n");
 				for (int i = 0; i < parameters.size(); i++) {
 					Map<String, Object> param = parameters.get(i);
-					sb.append("\t\t");
-					sb.append(toJavaType((String) param.get("type"), null));
+					sb.append("\t\tpublic ");
+					sb.append(toJavaType((String) param.get("type"), (String) param.get("format"), null));
 					sb.append(" ");
 					sb.append(param.get("name"));
 					sb.append(";\n");
@@ -230,24 +203,24 @@ public class Swagger {
 				// Response
 				Map<String, Object> r200 = getSuccessfulResponse(func);
 				Map<String, Object> schema = null;
-				schema = (Map<String, Object>) r200.get("schema");
+				if (r200 != null)
+					schema = (Map<String, Object>) r200.get("schema");
 				if (schema == null) {
 					schema = new HashMap<>();
 					schema.put("type", "object");
 					schema.put("properties", new HashMap<String, Object>());
 				}
-				appendClass(sb,
-						method + "Response implements ISwaggerResponse", schema);
+				appendClass(sb, method + "Response implements ISwaggerResponse", schema);
 
 				// Single method interface
-				sb.append("\tinterface I");
+				sb.append("\tpublic interface I");
 				sb.append(method);
 				sb.append(" extends ISwaggerMethod {\n");
-				sb.append("\t\tvoid run(");
+				sb.append("\t\tpublic void run(");
 				sb.append(method);
 				sb.append("Request req, ");
 				sb.append(method);
-				sb.append("Response resp);\n");
+				sb.append("Response resp) throws Exception;\n");
 				sb.append("\t}\n\n");
 			}
 		}
@@ -259,58 +232,49 @@ public class Swagger {
 	}
 
 	private Map<String, Object> getSuccessfulResponse(Map<String, Object> func) {
-		Map<String, Object> r200 = ((Map<String, Map<String, Object>>) func
-				.get("responses")).get(200);
+		Map<String, Object> r200 = ((Map<String, Map<String, Object>>) func.get("responses")).get(200);
 		if (r200 == null)
-			r200 = ((Map<String, Map<String, Object>>) func.get("responses"))
-					.get("200");
+			r200 = ((Map<String, Map<String, Object>>) func.get("responses")).get("200");
 		if (r200 == null)
-			r200 = ((Map<String, Map<String, Object>>) func.get("responses"))
-					.get(204);
+			r200 = ((Map<String, Map<String, Object>>) func.get("responses")).get(204);
 		if (r200 == null)
-			r200 = ((Map<String, Map<String, Object>>) func.get("responses"))
-					.get("204");
+			r200 = ((Map<String, Map<String, Object>>) func.get("responses")).get("204");
 		return r200;
 	}
 
-	private void appendClass(StringBuilder sb, String className,
-			Map<String, Object> definition) {
-		if (!"object".equals(definition.get("type")))
-			return;
-		Map<String, Map<String, Object>> properties = (Map<String, Map<String, Object>>) definition
-				.get("properties");
-		sb.append("\tclass ");
+	private void appendClass(StringBuilder sb, String className, Map<String, Object> definition) {
+		// if (!"object".equals(definition.get("type")))
+		// return;
+		Map<String, Map<String, Object>> properties = (Map<String, Map<String, Object>>) definition.get("properties");
+		sb.append("\tpublic class ");
 		sb.append(className);
 		sb.append(" {\n");
 		if (properties != null) {
 			for (String propertyKey : properties.keySet()) {
-				Map<String, Object> property = (Map<String, Object>) properties
-						.get(propertyKey);
+				Map<String, Object> property = (Map<String, Object>) properties.get(propertyKey);
 				String typename = null;
 				if (property.containsKey("$ref")) {
 					String ref = (String) (Object) property.get("$ref");
 					property = swaggerGetDefinition(ref);
 					typename = swaggerGetDefinitionName(ref);
 				}
-				sb.append("\t\t");
+				sb.append("\t\tpublic ");
 				String type = (String) property.get("type");
+				String format = (String) property.get("format");
 				if ("array".equals(type)) {
-					Map<String, Object> items = (Map<String, Object>) property
-							.get("items");
+					Map<String, Object> items = (Map<String, Object>) property.get("items");
 					if (items.containsKey("$ref")) {
 						String ref = (String) (Object) items.get("$ref");
 						typename = swaggerGetDefinitionName(ref);
 					}
 				} else if ("object".equals(type)) {
-					Map<String, Object> objectproperties = (Map<String, Object>) property
-							.get("properties");
+					Map<String, Object> objectproperties = (Map<String, Object>) property.get("properties");
 					if (objectproperties.containsKey("$ref")) {
-						String ref = (String) (Object) objectproperties
-								.get("$ref");
+						String ref = (String) (Object) objectproperties.get("$ref");
 						typename = swaggerGetDefinitionName(ref);
 					}
 				}
-				sb.append(toJavaType(type, typename));
+				sb.append(toJavaType(type, format, typename));
 				sb.append(" ");
 				sb.append(propertyKey);
 				sb.append(";\n");
@@ -320,18 +284,28 @@ public class Swagger {
 		return;
 	}
 
-	private String toJavaType(String s, String typename) {
-		if (s == null)
-			return s;
-		switch (s) {
+	private String toJavaType(String type, String format, String typename) {
+		if (type == null)
+			return type;
+		switch (type) {
 		case "string":
+			if ("byte".equals(format))
+				return "byte[]";
+			if ("date".equals(format))
+				return "Date";
+			if ("date-time".equals(format))
+				return "Date";
 			return "String";
 		case "boolean":
-			return "boolean";
+			return "Boolean";
 		case "integer":
-			return "long";
+			if ("int32".equals(format))
+				return "Integer";
+			return "Long";
 		case "number":
-			return "double";
+			if ("float".equals(format))
+				return "Float";
+			return "Double";
 		case "null":
 			return "String";
 		case "object":
@@ -339,7 +313,7 @@ public class Swagger {
 		case "array":
 			return "List<" + typename + ">";
 		default:
-			return s;
+			return type;
 		}
 	}
 
@@ -377,13 +351,11 @@ public class Swagger {
 		return sb.toString();
 	}
 
-	public static boolean has(ISwaggerModel model, String param)
-			throws Exception {
+	public static boolean has(ISwaggerModel model, String param) throws Exception {
 		return get(model, param) != null;
 	}
 
-	public static Object get(ISwaggerModel model, String param)
-			throws Exception {
+	public static Object get(ISwaggerModel model, String param) throws Exception {
 		Class<? extends ISwaggerModel> clazz = model.getClass();
 
 		Field field;
@@ -396,8 +368,7 @@ public class Swagger {
 		return field.get(model);
 	}
 
-	public static void set(ISwaggerModel model, String param, String value)
-			throws Exception {
+	public static void set(ISwaggerModel model, String param, String value) throws Exception {
 		Class<? extends ISwaggerModel> clazz = model.getClass();
 
 		Field field;

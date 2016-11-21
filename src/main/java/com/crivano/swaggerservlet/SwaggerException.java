@@ -7,9 +7,8 @@ public class SwaggerException extends Exception {
 	ISwaggerResponse resp;
 	String context;
 
-	public SwaggerException(String error, ISwaggerRequest req,
-			ISwaggerResponse resp, String context) {
-		super(error);
+	public SwaggerException(String error, Throwable cause, ISwaggerRequest req, ISwaggerResponse resp, String context) {
+		super(error, cause);
 		this.req = req;
 		this.resp = resp;
 		this.context = context;

@@ -18,11 +18,6 @@ import java.util.UUID;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import com.google.gson.Gson;
@@ -36,9 +31,6 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 public class SwaggerUtils {
-	private static final Logger log = LoggerFactory
-			.getLogger(SwaggerUtils.class);
-
 	private static Map<String, String> properties = new HashMap<>();
 
 	private static IMemCache memcache = new DefaultMemCache();
@@ -53,11 +45,22 @@ public class SwaggerUtils {
 		String s = System.getProperty(propertyName);
 		if (s != null)
 			return s;
-		s = System.getenv("PROP_"
-				+ propertyName.replace(".", "_").toUpperCase());
+		s = System.getenv("PROP_" + propertyName.replace(".", "_").toUpperCase());
 		if (s != null)
 			return s;
 		return defaultValue;
+	}
+
+	public static String getRequiredProperty(String propertyName, String exceptionMessage, boolean presentableException)
+			throws Exception {
+		String property = getProperty(propertyName, null);
+		if (property == null) {
+			if (presentableException)
+				throw new PresentableException(exceptionMessage);
+			else
+				throw new Exception(exceptionMessage);
+		}
+		return property;
 	}
 
 	public static void setProperty(String propertyName, String value) {
@@ -65,37 +68,30 @@ public class SwaggerUtils {
 	}
 
 	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
-	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(
-			ISO_FORMAT);
+	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(ISO_FORMAT);
 
 	public static final Gson gson = new GsonBuilder()
-			.registerTypeHierarchyAdapter(byte[].class,
-					new ByteArrayToBase64TypeAdapter())
-			.registerTypeHierarchyAdapter(Date.class,
-					new DateToStringTypeAdapter()).create();
+			.registerTypeHierarchyAdapter(byte[].class, new ByteArrayToBase64TypeAdapter())
+			.registerTypeHierarchyAdapter(Date.class, new DateToStringTypeAdapter()).setPrettyPrinting().create();
 
-	private static class ByteArrayToBase64TypeAdapter implements
-			JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
-		public byte[] deserialize(JsonElement json, Type typeOfT,
-				JsonDeserializationContext context) throws JsonParseException {
+	private static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
+		public byte[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+				throws JsonParseException {
 			return base64Decode(json.getAsString());
 		}
 
-		public JsonElement serialize(byte[] src, Type typeOfSrc,
-				JsonSerializationContext context) {
+		public JsonElement serialize(byte[] src, Type typeOfSrc, JsonSerializationContext context) {
 			return new JsonPrimitive(base64Encode(src));
 		}
 	}
 
-	private static class DateToStringTypeAdapter implements
-			JsonSerializer<Date>, JsonDeserializer<Date> {
-		public Date deserialize(JsonElement json, Type typeOfT,
-				JsonDeserializationContext context) throws JsonParseException {
+	private static class DateToStringTypeAdapter implements JsonSerializer<Date>, JsonDeserializer<Date> {
+		public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+				throws JsonParseException {
 			return parse(json.getAsString());
 		}
 
-		public JsonElement serialize(Date src, Type typeOfSrc,
-				JsonSerializationContext context) {
+		public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext context) {
 			return new JsonPrimitive(format(src));
 		}
 	}
@@ -112,8 +108,7 @@ public class SwaggerUtils {
 		return Base64Coder.decodeLines(b64);
 	}
 
-	private static String getBody(HttpServletRequest request)
-			throws IOException {
+	private static String getBody(HttpServletRequest request) throws IOException {
 
 		String body = null;
 		StringBuilder stringBuilder = new StringBuilder();
@@ -122,8 +117,7 @@ public class SwaggerUtils {
 		try {
 			InputStream inputStream = request.getInputStream();
 			if (inputStream != null) {
-				bufferedReader = new BufferedReader(new InputStreamReader(
-						inputStream));
+				bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 				char[] charBuffer = new char[128];
 				int bytesRead = -1;
 				while ((bytesRead = bufferedReader.read(charBuffer)) > 0) {
@@ -146,31 +140,24 @@ public class SwaggerUtils {
 		return body;
 	}
 
-	public static ISwaggerRequest getJsonReq(HttpServletRequest request,
-			String context, Class<? extends ISwaggerRequest> clazz) {
+	public static ISwaggerRequest getJsonReq(HttpServletRequest request, String context,
+			Class<? extends ISwaggerRequest> clazz) {
 		try {
 			String sJson = getBody(request);
 			ISwaggerRequest req = (ISwaggerRequest) fromJson(sJson, clazz);
-			if (context != null)
-				log.debug(context + " req: " + sJson);
 			return req;
 		} catch (Exception ex) {
 			throw new RuntimeException("Cannot parse request body as JSON", ex);
 		}
 	}
 
-	public static <T extends ISwaggerModel> T fromJson(String sJson,
-			Class<T> clazz) {
+	public static <T extends ISwaggerModel> T fromJson(String sJson, Class<T> clazz) {
 		return gson.fromJson(sJson, clazz);
 	}
 
-	public static void writeJsonResp(HttpServletResponse response,
-			ISwaggerResponse resp, String context, String service)
-			throws JSONException, IOException {
+	public static void writeJsonResp(HttpServletResponse response, ISwaggerResponse resp, String context,
+			String service) throws Exception {
 		String sJson = toJson(resp);
-		if (context != null)
-			log.debug(context + " resp: " + sJson);
-
 		response.setContentType("application/json; charset=UTF-8");
 		response.setCharacterEncoding("UTF-8");
 		response.getWriter().println(sJson);
@@ -180,62 +167,54 @@ public class SwaggerUtils {
 		return gson.toJson(resp);
 	}
 
-	public static void writeJsonError(HttpServletRequest request,
-			HttpServletResponse response, final Exception e,
-			ISwaggerRequest req, ISwaggerResponse resp, String context,
-			String service) {
-		JSONObject json = new JSONObject();
-		String errmsg = messageAsString(e);
-		String errstack = stackAsString(e);
-		boolean errpresentable = e instanceof IPresentableException;
-
+	public static SwaggerError writeJsonError(HttpServletRequest request, HttpServletResponse response,
+			final Exception e, ISwaggerRequest req, ISwaggerResponse resp, String context, String service) {
 		SwaggerError error = new SwaggerError();
 
 		try {
-			error.errormsg = errmsg;
-
-			// Error Details
-			JSONArray arr = new JSONArray();
-			for (Throwable t = e; t != null && t != t.getCause(); t = t
-					.getCause()) {
-				if (t instanceof SwaggerException) {
-					SwaggerException wse = (SwaggerException) t;
-					if (wse.resp != null && wse.resp instanceof SwaggerError) {
-						SwaggerError previousError = (SwaggerError) wse.resp;
-						error.errordetails = previousError.errordetails;
-					}
-					break;
-				}
-			}
-
-			if (error.errordetails != null && error.errordetails.size() > 0) {
-				errpresentable = error.errordetails.get(0).presentable;
-			} else {
-				error.errordetails = new ArrayList<>();
-			}
-
-			SwaggerError.Detail detail = error.new Detail();
-			detail.context = context;
-			detail.service = service;
-			detail.stacktrace = errstack;
-			detail.presentable = errpresentable;
-			detail.logged = true;
-			error.errordetails.add(detail);
-
+			buildSwaggerError(request, e, context, service, error);
 			response.setStatus(500);
 			writeJsonResp(response, error, context, service);
-
-			try {
-				detail.url = request.getRequestURL().toString();
-			} catch (Exception ex) {
-
-			}
-			detail.req = req;
-			detail.resp = resp;
-			log.error(json.toString(3));
+			return error;
 		} catch (Exception e1) {
 			throw new RuntimeException("Error building error message.", e1);
 		}
+	}
+
+	public static void buildSwaggerError(HttpServletRequest request, final Exception e, String context, String service,
+			SwaggerError error) {
+		String errmsg = messageAsString(e);
+		String errstack = stackAsString(e);
+		boolean errpresentable = e instanceof IPresentableException;
+		error.errormsg = errmsg;
+
+		// Error Details
+		for (Throwable t = e; t != null && t != t.getCause(); t = t.getCause()) {
+			if (t instanceof SwaggerException) {
+				SwaggerException wse = (SwaggerException) t;
+				if (wse.resp != null && wse.resp instanceof SwaggerError) {
+					SwaggerError previousError = (SwaggerError) wse.resp;
+					error.errordetails = previousError.errordetails;
+				}
+				break;
+			}
+		}
+
+		if (error.errordetails != null && error.errordetails.size() > 0) {
+			errpresentable = error.errordetails.get(0).presentable;
+		} else {
+			error.errordetails = new ArrayList<>();
+		}
+
+		SwaggerError.Detail detail = error.new Detail();
+		detail.context = context;
+		detail.service = service;
+		detail.stacktrace = errstack;
+		detail.presentable = errpresentable;
+		detail.logged = true;
+		// if (request.getRequestURI() != null)
+		detail.url = request.getRequestURI();
+		error.errordetails.add(detail);
 	}
 
 	public static String messageAsString(final Exception e) {
@@ -260,14 +239,20 @@ public class SwaggerUtils {
 	}
 
 	public static String format(Date date) {
-		return isoFormatter.format(date);
+		synchronized (isoFormatter) {
+			return isoFormatter.format(date);
+		}
 	}
 
 	public static Date parse(String date) {
-		try {
-			return isoFormatter.parse(date);
-		} catch (ParseException e) {
+		if (date == null)
 			return null;
+		try {
+			synchronized (isoFormatter) {
+				return isoFormatter.parse(date);
+			}
+		} catch (ParseException e) {
+			throw new RuntimeException(e);
 		}
 	}
 

@@ -11,8 +11,6 @@ public class SwaggerError implements ISwaggerResponse {
 		boolean logged;
 
 		String url;
-		ISwaggerRequest req;
-		ISwaggerResponse resp;
 	}
 
 	public String errormsg;
