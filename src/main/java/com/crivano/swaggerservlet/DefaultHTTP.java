@@ -18,6 +18,7 @@ public class DefaultHTTP implements IHTTP {
 		URL obj = new URL(url);
 		con = (HttpURLConnection) obj.openConnection();
 
+		con.setRequestProperty("User-Agent", "SwaggerServlets");
 		if (authorization != null)
 			con.setRequestProperty("Authorization", authorization);
 		con.setRequestMethod(method);

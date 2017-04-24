@@ -15,6 +15,7 @@ public class TestResponse extends SwaggerError {
 	Boolean status;
 	Boolean pass;
 	Boolean skiped;
+	long ms;
 	List<TestResponse> dependencies;
 
 	public TestResponse(String category, String service, String url, String responsable, Boolean partial) {

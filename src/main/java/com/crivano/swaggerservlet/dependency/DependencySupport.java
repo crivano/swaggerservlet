@@ -4,14 +4,18 @@ public abstract class DependencySupport implements IDependency {
 	private String service;
 	private String category;
 	private boolean partial;
+	private long msMin;
+	private long msMax;
 
 	public DependencySupport() {
 	}
 
-	public DependencySupport(String category, String service, boolean partial) {
+	public DependencySupport(String category, String service, boolean partial, long msMin, long msMax) {
 		this.setCategory(category);
 		this.setService(service);
 		this.setPartial(partial);
+		this.setMsMin(msMin);
+		this.setMsMax(msMax);
 	}
 
 	@Override
@@ -45,6 +49,22 @@ public abstract class DependencySupport implements IDependency {
 
 	public void setPartial(boolean partial) {
 		this.partial = partial;
+	}
+
+	public long getMsMin() {
+		return msMin;
+	}
+
+	public void setMsMin(long msMin) {
+		this.msMin = msMin;
+	}
+
+	public long getMsMax() {
+		return msMax;
+	}
+
+	public void setMsMax(long msMax) {
+		this.msMax = msMax;
 	}
 
 }

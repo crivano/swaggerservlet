@@ -38,9 +38,19 @@ public class SwaggerServlet extends HttpServlet {
 		Class<? extends ISwaggerResponse> clazzResponse;
 		ISwaggerRequest req;
 		ISwaggerResponse resp;
+		HttpServletRequest request;
+		HttpServletResponse response;
 	}
 
-	private ThreadLocal<Prepared> current = new ThreadLocal<Prepared>();
+	private static ThreadLocal<Prepared> current = new ThreadLocal<Prepared>();
+
+	public static HttpServletRequest getHttpServletRequest() {
+		return current.get().request;
+	}
+
+	public static HttpServletResponse getHttpServletResponse() {
+		return current.get().response;
+	}
 
 	protected void prepare(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		String requestMethod = request.getMethod();
@@ -166,6 +176,8 @@ public class SwaggerServlet extends HttpServlet {
 		try {
 			prepare(request, response);
 			Prepared prepared = current.get();
+			prepared.request = request;
+			prepared.response = response;
 			req = prepared.req;
 			resp = prepared.resp;
 
@@ -191,7 +203,12 @@ public class SwaggerServlet extends HttpServlet {
 			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
 
 			try {
-				if (swagger.has(resp, "contenttype")) {
+				String userAgent = request.getHeader("User-Agent");
+				if (userAgent == null)
+					userAgent = request.getHeader("user-agent");
+				response.setHeader("Swagger-Servlet-Request-UA", userAgent);
+				boolean fCanReturnPayload = !"SwaggerServlet".equals(userAgent);
+				if (fCanReturnPayload && swagger.has(resp, "contenttype")) {
 					byte[] payload = (byte[]) swagger.get(resp, "payload");
 					response.setContentLength(payload.length);
 					response.setContentType((String) swagger.get(resp, "contenttype"));

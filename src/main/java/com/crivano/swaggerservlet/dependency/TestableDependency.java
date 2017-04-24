@@ -5,8 +5,8 @@ public abstract class TestableDependency extends DependencySupport {
 		super();
 	}
 
-	public TestableDependency(String category, String service, boolean partial) {
-		super(category, service, partial);
+	public TestableDependency(String category, String service, boolean partial, long msMin, long msMax) {
+		super(category, service, partial, msMin, msMax);
 	}
 
 	public abstract boolean test() throws Exception;

@@ -15,6 +15,10 @@ public interface IDependency {
 	String getResponsable();
 
 	boolean isTestable();
-	
+
 	boolean isPartial();
+
+	public long getMsMin();
+
+	public long getMsMax();
 }

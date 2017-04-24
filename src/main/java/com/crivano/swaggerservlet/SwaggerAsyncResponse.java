@@ -8,7 +8,7 @@ public class SwaggerAsyncResponse<T extends ISwaggerResponse> {
 		this.resp = resp;
 	}
 
-	public ISwaggerResponse getResp() {
+	public T getResp() {
 		return this.resp;
 	}
 
