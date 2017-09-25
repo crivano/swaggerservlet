@@ -38,12 +38,12 @@ public class SwaggerCall {
 			} catch (Exception ex) {
 				String errmsg = SwaggerUtils.messageAsString(ex);
 				String errstack = SwaggerUtils.stackAsString(ex);
-				throw new SwaggerException(errmsg, ex, req, null, context);
+				throw new SwaggerException(errmsg, 500, ex, req, null, context);
 			}
 
 			if (!(resp instanceof TestResponse) && resp instanceof SwaggerError) {
 				SwaggerError err = (SwaggerError) resp;
-				throw new SwaggerException(err.errormsg, null, req, resp, context);
+				throw new SwaggerException(err.errormsg, 500, null, req, resp, context);
 			}
 			return resp;
 		} finally {
@@ -87,7 +87,7 @@ public class SwaggerCall {
 		} catch (Exception ex) {
 			String errmsg = SwaggerUtils.messageAsString(ex);
 			String errstack = SwaggerUtils.stackAsString(ex);
-			throw new SwaggerException(errmsg, ex, req, null, context);
+			throw new SwaggerException(errmsg, 500, ex, req, null, context);
 		}
 	}
 

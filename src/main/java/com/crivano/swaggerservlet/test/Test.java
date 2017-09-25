@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -24,29 +25,53 @@ import com.crivano.swaggerservlet.SwaggerUtils;
 import com.crivano.swaggerservlet.dependency.IDependency;
 import com.crivano.swaggerservlet.dependency.SwaggerServletDependency;
 import com.crivano.swaggerservlet.dependency.TestableDependency;
+import com.crivano.swaggerservlet.property.IProperty;
 
 public class Test {
 	private static final long DEFAULT_TIMEOUT_MILLISECONDS = 10000L;
 	private static final Logger log = LoggerFactory.getLogger(Test.class);
 
-	public static void run(SwaggerServlet ss, Map<String, IDependency> dependencies, HttpServletRequest request,
-			HttpServletResponse response) throws IOException {
+	public static void run(SwaggerServlet ss, Map<String, IDependency> dependencies, List<IProperty> properties,
+			HttpServletRequest request, HttpServletResponse response) throws IOException {
 		long start_time = System.currentTimeMillis();
 		Set<String> skip = new HashSet<>();
 		String[] skipValues = request.getParameterValues("skip");
+		boolean skipAll = false;
 		long timeout;
 		try {
 			timeout = Long.parseLong(request.getParameter("timeout"));
 		} catch (NumberFormatException e) {
 			timeout = DEFAULT_TIMEOUT_MILLISECONDS;
 		}
-		if (skipValues != null)
+		if (skipValues != null) {
 			for (String s : skipValues)
 				skip.add(s);
+			if (skipValues.length == 1 && "all".equals(skipValues[0]))
+				skipAll = true;
+		}
 
 		TestResponse tr = new TestResponse(null, ss.getService(), request.getRequestURI(), null, false);
 
-		try {
+		tr.version = ss.getManifestEntries().get("Build-Label");
+		tr.timestamp = ss.getManifestEntries().get("Build-Time");
+
+		boolean auth = ss.getAuthorizationToProperties() != null
+				&& ss.getAuthorizationToProperties().equals(request.getParameter("authorizationToProperties"));
+
+		for (IProperty p : properties) {
+			if (p.isPublic())
+				tr.addProperty(p.getName());
+			else if (p.isRestricted()) {
+				if (auth)
+					tr.addProperty(p.getName());
+			} else if (p.isPrivate())
+				if (auth)
+					tr.addPrivateProperty(p.getName());
+		}
+
+		try
+
+		{
 			try {
 				boolean dependenciesOK = true;
 				for (String service : dependencies.keySet()) {
@@ -59,7 +84,7 @@ public class Test {
 					long time_left = timeout - current_time + start_time;
 					if (time_left < 0L)
 						time_left = 0L;
-					if (!skip.contains(ref) && (time_left >= dep.getMsMin())) {
+					if (!skipAll && !skip.contains(ref) && (time_left >= dep.getMsMin())) {
 						try {
 							if (dep instanceof SwaggerServletDependency) {
 								StringBuilder sb = new StringBuilder();
@@ -88,7 +113,7 @@ public class Test {
 						} catch (TimeoutException e) {
 						} catch (Exception e) {
 							tr2.available = false;
-							SwaggerUtils.buildSwaggerError(request, e, "testing", dep.getService(), tr2);
+							SwaggerUtils.buildSwaggerError(request, e, "testing", dep.getService(), null, tr2);
 						}
 						addToSkipList(skip, tr2, ref);
 						if (tr2.available != null && !tr2.available) {
@@ -113,7 +138,7 @@ public class Test {
 				}
 			} catch (Exception e) {
 				tr.available = false;
-				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), tr);
+				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr);
 			}
 			try {
 				SwaggerServlet.corsHeaders(response);

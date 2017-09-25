@@ -49,7 +49,19 @@ public class DefaultHTTP implements IHTTP {
 				errormsg = errormsg + " - " + con.getResponseMessage();
 			if (err != null && err.errormsg != null)
 				errormsg = err.errormsg;
-			throw new SwaggerException(errormsg, null, req, err, null);
+			errormsg = errormsg.replaceAll("\\s+", " ");
+			throw new SwaggerException(errormsg, responseCode,
+					new Exception("calling webservice "
+							+ clazzResp.getName().replaceAll("Response$", "").replaceAll("^.+\\.", "")),
+					req, err, null);
+		}
+
+		if (ISwaggerResponseFile.class.isAssignableFrom(clazzResp)) {
+			ISwaggerResponseFile resp = (ISwaggerResponseFile) SwaggerUtils.fromJson("{}", clazzResp);
+			resp.setContentlength((long) con.getContentLength());
+			resp.setContenttype(con.getContentType());
+			resp.setInputstream(con.getInputStream());
+			return (T) resp;
 		}
 
 		String respString = convertStreamToString(con.getInputStream());

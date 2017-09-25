@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -17,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.crivano.swaggerservlet.dependency.IDependency;
+import com.crivano.swaggerservlet.property.IProperty;
 import com.crivano.swaggerservlet.test.Test;
 
 public class SwaggerServlet extends HttpServlet {
@@ -27,6 +31,28 @@ public class SwaggerServlet extends HttpServlet {
 	private Swagger swagger = null;
 	private String actionpackage = null;
 	private Map<String, IDependency> dependencies = new TreeMap<>();
+	private List<IProperty> properties = new ArrayList<>();
+	private Map<String, String> manifest = new TreeMap<>();
+
+	private String authorization = null;
+	private String authorizationToProperties = null;
+
+	@Override
+	public void init(ServletConfig config) throws ServletException {
+		super.init(config);
+
+		try (InputStream is = config.getServletContext().getResourceAsStream("/META-INF/MANIFEST.MF")) {
+			String m = SwaggerUtils.convertStreamToString(is);
+			m = m.replaceAll("\r\n", "\n");
+			for (String s : m.split("\n")) {
+				String a[] = s.split(":", 2);
+				if (a.length == 2)
+					manifest.put(a[0].trim(), a[1].trim());
+			}
+		} catch (IOException e) {
+			log.error("INIT ERROR: ", e);
+		}
+	}
 
 	private class Prepared {
 		String actionName;
@@ -50,6 +76,10 @@ public class SwaggerServlet extends HttpServlet {
 
 	public static HttpServletResponse getHttpServletResponse() {
 		return current.get().response;
+	}
+
+	public Map<String, String> getManifestEntries() {
+		return manifest;
 	}
 
 	protected void prepare(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -120,6 +150,10 @@ public class SwaggerServlet extends HttpServlet {
 		return swagger.getInfoTitle();
 	}
 
+	public String getUser() {
+		return null;
+	}
+
 	public void setSwagger(Swagger sw) {
 		this.swagger = sw;
 	}
@@ -128,7 +162,11 @@ public class SwaggerServlet extends HttpServlet {
 		this.actionpackage = ap;
 	}
 
-	private String authorization = null;
+	@Override
+	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		// TODO Auto-generated method stub
+		doPost(req, resp);
+	}
 
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse response) throws ServletException, IOException {
@@ -148,7 +186,7 @@ public class SwaggerServlet extends HttpServlet {
 			response.getOutputStream().write(ab);
 			response.getOutputStream().flush();
 		} else if ("GET".equals(req.getMethod()) && req.getPathInfo() != null && req.getPathInfo().equals("/test")) {
-			Test.run(this, dependencies, req, response);
+			Test.run(this, dependencies, properties, req, response);
 		} else
 			doPost(req, response);
 	}
@@ -202,12 +240,24 @@ public class SwaggerServlet extends HttpServlet {
 
 			response.setHeader("Swagger-Servlet-Version", "0.0.2-SNAPSHOT");
 
+			String userAgent = request.getHeader("User-Agent");
+			if (userAgent == null)
+				userAgent = request.getHeader("user-agent");
+			response.setHeader("Swagger-Servlet-Request-UA", userAgent);
+			boolean fCanReturnPayload = !"SwaggerServlet".equals(userAgent);
+
+			if (fCanReturnPayload && resp instanceof ISwaggerResponseFile) {
+				ISwaggerResponseFile r = (ISwaggerResponseFile) resp;
+				if (r.getContentlength() != null)
+					response.setContentLength(r.getContentlength().intValue());
+				response.setContentType(r.getContenttype());
+				if (r.getContentdisposition() != null)
+					response.setHeader("Content-Disposition", r.getContentdisposition());
+				SwaggerUtils.transferContent(r.getInputstream(), response.getOutputStream());
+				return;
+			}
+
 			try {
-				String userAgent = request.getHeader("User-Agent");
-				if (userAgent == null)
-					userAgent = request.getHeader("user-agent");
-				response.setHeader("Swagger-Servlet-Request-UA", userAgent);
-				boolean fCanReturnPayload = !"SwaggerServlet".equals(userAgent);
 				if (fCanReturnPayload && swagger.has(resp, "contenttype")) {
 					byte[] payload = (byte[]) swagger.get(resp, "payload");
 					response.setContentLength(payload.length);
@@ -232,15 +282,48 @@ public class SwaggerServlet extends HttpServlet {
 			SwaggerUtils.writeJsonResp(response, resp, getContext(), getService());
 			response.getWriter().close();
 		} catch (Exception e) {
-			SwaggerError error = SwaggerUtils.writeJsonError(request, response, e, req, resp, getContext(),
-					getService());
-			response.getWriter().close();
+			try {
+				int sts = errorCode(e);
+				if (e instanceof SwaggerAuthorizationException)
+					sts = 401;
 
-			lr.request = req;
-			lr.response = error;
-			String details = SwaggerUtils.toJson(lr);
-			log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
+				SwaggerError error = SwaggerUtils.writeJsonError(sts, request, response, e, req, resp, getContext(),
+						getService(), getUser());
+				response.getWriter().close();
+
+				if (shouldBeLogged(sts, e)) {
+					lr.request = req;
+					lr.response = error;
+					String details = SwaggerUtils.toJson(lr);
+					log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
+				}
+			} catch (Exception e2) {
+				throw new RuntimeException("Error returning error message.", e);
+			}
 		}
+	}
+
+	/**
+	 * What error code should we output for this exception?
+	 * 
+	 * @param e
+	 * @return
+	 */
+	public int errorCode(Exception e) {
+		if (e instanceof SwaggerException)
+			return ((SwaggerException) e).getStatus();
+		return 500;
+	}
+
+	/**
+	 * Should this exception be logged?
+	 * 
+	 * @param sts
+	 * @param s
+	 * @return
+	 */
+	public boolean shouldBeLogged(int sts, Exception e) {
+		return sts >= 500 && !(e instanceof IUnloggedException);
 	}
 
 	public String getAuthorizationFromHeader(HttpServletRequest request) {
@@ -310,7 +393,7 @@ public class SwaggerServlet extends HttpServlet {
 	public static void corsHeaders(HttpServletResponse response) {
 		response.addHeader("Access-Control-Allow-Origin", "*");
 		response.addHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS");
-		response.addHeader("Access-Control-Allow-Headers", "Content-Type");
+		response.addHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
 	}
 
 	public String getAuthorization() {
@@ -319,6 +402,14 @@ public class SwaggerServlet extends HttpServlet {
 
 	public void setAuthorization(String authorization) {
 		this.authorization = authorization;
+	}
+
+	public String getAuthorizationToProperties() {
+		return authorizationToProperties;
+	}
+
+	public void setAuthorizationToProperties(String authorization) {
+		this.authorizationToProperties = authorization;
 	}
 
 	public void run(ISwaggerRequest req, ISwaggerResponse resp) throws Exception {
@@ -350,6 +441,10 @@ public class SwaggerServlet extends HttpServlet {
 
 	public void addDependency(IDependency dep) {
 		dependencies.put(dep.getService(), dep);
+	}
+
+	public void addProperty(IProperty p) {
+		properties.add(p);
 	}
 
 }

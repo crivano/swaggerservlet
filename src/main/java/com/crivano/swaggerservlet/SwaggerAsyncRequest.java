@@ -29,7 +29,8 @@ public class SwaggerAsyncRequest<T extends ISwaggerResponse> implements Callable
 			SwaggerAsyncResponse<T> ar = new SwaggerAsyncResponse<T>(null);
 			String errmsg = SwaggerUtils.messageAsString(ex);
 			String errstack = SwaggerUtils.stackAsString(ex);
-			ar.setException(new SwaggerException(errmsg, ex, req, null, context));
+			int status = (ex instanceof SwaggerException) ? ((SwaggerException) ex).getStatus() : 500;
+			ar.setException(new SwaggerException(errmsg, status, ex, req, null, context));
 			return ar;
 		}
 	}

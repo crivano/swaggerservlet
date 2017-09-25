@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Type;
@@ -18,6 +19,8 @@ import java.util.UUID;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import com.google.gson.Gson;
@@ -34,6 +37,8 @@ public class SwaggerUtils {
 	private static Map<String, String> properties = new HashMap<>();
 
 	private static IMemCache memcache = new DefaultMemCache();
+
+	private static Map<Class, Logger> mapLogger = new HashMap<>();
 
 	public static void setCache(IMemCache memcache) {
 		SwaggerUtils.memcache = memcache;
@@ -71,8 +76,20 @@ public class SwaggerUtils {
 	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(ISO_FORMAT);
 
 	public static final Gson gson = new GsonBuilder()
+			.registerTypeHierarchyAdapter(InputStream.class, new InputStreamTypeAdapter())
 			.registerTypeHierarchyAdapter(byte[].class, new ByteArrayToBase64TypeAdapter())
 			.registerTypeHierarchyAdapter(Date.class, new DateToStringTypeAdapter()).setPrettyPrinting().create();
+
+	private static class InputStreamTypeAdapter implements JsonSerializer<InputStream>, JsonDeserializer<InputStream> {
+		public InputStream deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+				throws JsonParseException {
+			return null;
+		}
+
+		public JsonElement serialize(InputStream src, Type typeOfSrc, JsonSerializationContext context) {
+			return null;
+		}
+	}
 
 	private static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
 		public byte[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
@@ -167,13 +184,14 @@ public class SwaggerUtils {
 		return gson.toJson(resp);
 	}
 
-	public static SwaggerError writeJsonError(HttpServletRequest request, HttpServletResponse response,
-			final Exception e, ISwaggerRequest req, ISwaggerResponse resp, String context, String service) {
+	public static SwaggerError writeJsonError(int status, HttpServletRequest request, HttpServletResponse response,
+			final Exception e, ISwaggerRequest req, ISwaggerResponse resp, String context, String service,
+			String user) {
 		SwaggerError error = new SwaggerError();
 
 		try {
-			buildSwaggerError(request, e, context, service, error);
-			response.setStatus(500);
+			buildSwaggerError(request, e, context, service, user, error);
+			response.setStatus(status);
 			writeJsonResp(response, error, context, service);
 			return error;
 		} catch (Exception e1) {
@@ -182,7 +200,7 @@ public class SwaggerUtils {
 	}
 
 	public static void buildSwaggerError(HttpServletRequest request, final Exception e, String context, String service,
-			SwaggerError error) {
+			String user, SwaggerError error) {
 		String errmsg = messageAsString(e);
 		String errstack = stackAsString(e);
 		boolean errpresentable = e instanceof IPresentableException;
@@ -213,6 +231,7 @@ public class SwaggerUtils {
 		detail.presentable = errpresentable;
 		detail.logged = true;
 		// if (request.getRequestURI() != null)
+		detail.user = user;
 		detail.url = request.getRequestURI();
 		error.errordetails.add(detail);
 	}
@@ -291,9 +310,27 @@ public class SwaggerUtils {
 	}
 
 	public static String convertStreamToString(java.io.InputStream is) {
+		if (is == null)
+			return null;
 		try (java.util.Scanner s = new java.util.Scanner(is)) {
 			return s.useDelimiter("\\A").hasNext() ? s.next() : "";
 		}
+	}
+
+	public static void transferContent(InputStream in, OutputStream out) throws IOException {
+		byte[] buf = new byte[1024];
+		int len;
+		while ((len = in.read(buf)) > 0) {
+			out.write(buf, 0, len);
+		}
+		out.close();
+		in.close();
+	}
+
+	public static Logger log(Class clazz) {
+		if (!mapLogger.containsKey(clazz))
+			mapLogger.put(clazz, LoggerFactory.getLogger(clazz));
+		return mapLogger.get(clazz);
 	}
 
 }

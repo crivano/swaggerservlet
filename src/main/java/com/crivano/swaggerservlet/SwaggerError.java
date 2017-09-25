@@ -10,6 +10,7 @@ public class SwaggerError implements ISwaggerResponse {
 		boolean presentable;
 		boolean logged;
 
+		String user;
 		String url;
 	}
 

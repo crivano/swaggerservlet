@@ -174,7 +174,7 @@ public class Swagger {
 		// Object Definitions
 		for (String definitionKey : definitions.keySet()) {
 			Map<String, Object> definition = (Map<String, Object>) definitions.get(definitionKey);
-			appendClass(sb, definitionKey + " implements ISwaggerModel", definition);
+			appendClass(sb, definitionKey + " implements ISwaggerModel", definition, null);
 		}
 
 		Map<String, Object> paths = (Map<String, Object>) this.swagger.get("paths");
@@ -210,7 +210,9 @@ public class Swagger {
 					schema.put("type", "object");
 					schema.put("properties", new HashMap<String, Object>());
 				}
-				appendClass(sb, method + "Response implements ISwaggerResponse", schema);
+				Map<String, Map<String, Object>> headers = (Map<String, Map<String, Object>>) r200.get("headers");
+
+				appendClass(sb, method + "Response implements ISwaggerResponse", schema, headers);
 
 				// Single method interface
 				sb.append("\tpublic interface I");
@@ -242,14 +244,64 @@ public class Swagger {
 		return r200;
 	}
 
-	private void appendClass(StringBuilder sb, String className, Map<String, Object> definition) {
-		// if (!"object".equals(definition.get("type")))
-		// return;
+	private void appendClass(StringBuilder sb, String className, Map<String, Object> definition,
+			Map<String, Map<String, Object>> headers) {
 		Map<String, Map<String, Object>> properties = (Map<String, Map<String, Object>>) definition.get("properties");
+		String typeOnly = (String) definition.get("type");
+		boolean fileResponse = typeOnly != null && "file".equals(typeOnly);
+		boolean payloadResponse = properties != null && properties.containsKey("payload")
+				&& properties.containsKey("contenttype");
+
 		sb.append("\tpublic class ");
-		sb.append(className);
+		sb.append(className + (fileResponse ? ", ISwaggerResponseFile" : "")
+				+ (payloadResponse ? ", ISwaggerResponsePayload" : ""));
 		sb.append(" {\n");
-		if (properties != null) {
+
+		if (fileResponse) {
+			sb.append("\t\tpublic String contenttype");
+			if (headers != null) {
+				String contenttype = headers.get("Content-Type") == null ? null
+						: (String) headers.get("Content-Type").get("description");
+				if (contenttype != null)
+					sb.append(" = \"" + contenttype + "\"");
+			}
+			sb.append(";\n");
+			sb.append("\t\tpublic String contentdisposition");
+			if (headers != null) {
+				String contentdisposition = headers.get("Content-Disposition") == null ? null
+						: (String) headers.get("Content-Disposition").get("description");
+				if (contentdisposition != null)
+					sb.append(" = \"" + contentdisposition + "\"");
+			}
+			sb.append(";\n\n");
+			sb.append("\t\tpublic Long contentlength;\n");
+			sb.append("\t\tpublic InputStream inputstream;\n");
+
+			sb.append("\t\tpublic String getContenttype() {\n");
+			sb.append("\t\t\treturn contenttype;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic void setContenttype(String contenttype) {\n");
+			sb.append("\t\t\tthis.contenttype = contenttype;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic String getContentdisposition() {\n");
+			sb.append("\t\t\treturn contentdisposition;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic void setContentdisposition(String contentdisposition) {\n");
+			sb.append("\t\t\tthis.contentdisposition = contentdisposition;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic Long getContentlength() {\n");
+			sb.append("\t\t\treturn contentlength;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic void setContentlength(Long contentlength) {\n");
+			sb.append("\t\t\tthis.contentlength = contentlength;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic InputStream getInputstream() {\n");
+			sb.append("\t\t\treturn inputstream;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic void setInputstream(InputStream inputstream) {\n");
+			sb.append("\t\t\tthis.inputstream = inputstream;\n");
+			sb.append("\t\t}\n");
+		} else if (properties != null) {
 			for (String propertyKey : properties.keySet()) {
 				Map<String, Object> property = (Map<String, Object>) properties.get(propertyKey);
 				String typename = null;
