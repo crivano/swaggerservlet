@@ -3,6 +3,7 @@ package com.crivano.swaggerservlet.test;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,9 @@ public class Test {
 			HttpServletRequest request, HttpServletResponse response) throws IOException {
 		long start_time = System.currentTimeMillis();
 		Set<String> skip = new HashSet<>();
+		Map<String, Boolean> partialMap = new HashMap<>();
 		String[] skipValues = request.getParameterValues("skip");
+		String[] partialValues = request.getParameterValues("partial");
 		boolean skipAll = false;
 		long timeout;
 		try {
@@ -48,6 +51,12 @@ public class Test {
 				skip.add(s);
 			if (skipValues.length == 1 && "all".equals(skipValues[0]))
 				skipAll = true;
+		}
+		if (partialValues != null) {
+			for (String s : partialValues) {
+				String[] split = s.split(":");
+				partialMap.put(split[0], Boolean.valueOf(split[1]));
+			}
 		}
 
 		TestResponse tr = new TestResponse(null, ss.getService(), request.getRequestURI(), null, false);
@@ -69,15 +78,18 @@ public class Test {
 					tr.addPrivateProperty(p.getName());
 		}
 
-		try
-
-		{
+		try {
 			try {
 				boolean dependenciesOK = true;
 				for (String service : dependencies.keySet()) {
 					IDependency dep = dependencies.get(service);
+					boolean isPartial = dep.isPartial();
+					if (partialMap.containsKey(dep.getService()))
+						isPartial = partialMap.get(dep.getService());
+					if (partialMap.containsKey(dep.getUrl()))
+						isPartial = partialMap.get(dep.getUrl());
 					TestResponse tr2 = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(),
-							dep.getResponsable(), dep.isPartial());
+							dep.getResponsable(), isPartial);
 					String ref = dep.getService() + "@" + dep.getUrl();
 
 					long current_time = System.currentTimeMillis();
@@ -118,22 +130,23 @@ public class Test {
 						addToSkipList(skip, tr2, ref);
 						if (tr2.available != null && !tr2.available) {
 							dependenciesOK = false;
-							if (!dep.isPartial()) {
+							if (!isPartial) {
 								tr.available = false;
 							}
 						}
 					} else {
 						tr2.skiped = true;
 					}
-					tr2.partial = dep.isPartial() ? true : null;
+					tr2.partial = isPartial ? true : null;
 					tr2.ms = System.currentTimeMillis() - current_time;
 					tr.addDependency(tr2);
 				}
 				if (tr.available == null) {
 					tr.available = ss.test();
-					if (!tr.available)
+					if (!tr.available) {
+						tr.pass = false;
 						throw new Exception("Test is failing.");
-					else
+					} else
 						tr.pass = true;
 				}
 			} catch (Exception e) {
@@ -141,6 +154,8 @@ public class Test {
 				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr);
 			}
 			try {
+				if (tr.pass == null || tr.pass == false)
+					response.setStatus(503);
 				SwaggerServlet.corsHeaders(response);
 				SwaggerUtils.writeJsonResp(response, tr, "test", ss.getService());
 			} catch (JSONException e) {

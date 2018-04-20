@@ -3,6 +3,7 @@ package com.crivano.swaggerservlet;
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 public class DefaultHTTP implements IHTTP {
 	public static String convertStreamToString(java.io.InputStream is) {
@@ -34,7 +35,7 @@ public class DefaultHTTP implements IHTTP {
 			// Send post request
 			con.setDoOutput(true);
 			DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-			wr.writeBytes(body);
+			wr.write(body.getBytes(StandardCharsets.UTF_8));
 			wr.flush();
 			wr.close();
 		}

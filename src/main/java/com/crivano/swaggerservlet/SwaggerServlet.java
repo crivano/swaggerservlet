@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -298,6 +299,8 @@ public class SwaggerServlet extends HttpServlet {
 					log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
 				}
 			} catch (Exception e2) {
+				if (e.getMessage() != null && e.getMessage().contains("Connection reset"))
+					return;
 				throw new RuntimeException("Error returning error message.", e);
 			}
 		}

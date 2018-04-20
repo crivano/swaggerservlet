@@ -432,6 +432,8 @@ public class Swagger {
 		Object v = value;
 		if (field.getType() == Long.class)
 			v = new Long(value);
+		if (field.getType() == Boolean.class)
+			v = new Boolean(value);
 		field.setAccessible(true);
 		field.set(model, v);
 	}
