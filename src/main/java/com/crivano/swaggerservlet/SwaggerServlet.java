@@ -186,6 +186,31 @@ public class SwaggerServlet extends HttpServlet {
 			response.setContentLength(ab.length);
 			response.getOutputStream().write(ab);
 			response.getOutputStream().flush();
+		} else if (req.getPathInfo() != null && req.getPathInfo().endsWith("/swagger-ui")) {
+			response.sendRedirect(req.getRequestURL() + "/index.html?url="
+					+ req.getRequestURL().substring(0, req.getRequestURL().length() - "/swagger-ui".length())
+					+ "/swagger.yaml");
+		} else if (req.getPathInfo() != null && req.getPathInfo().contains("/swagger-ui/")) {
+			// Return components of the swagger-ui
+			//
+			String resource = req.getPathInfo()
+					.substring(req.getPathInfo().lastIndexOf("/swagger-ui/") + "/swagger-ui/".length());
+			if (!resource.matches("^[a-z0-9\\.-]+$"))
+				throw new ServletException("Invalid swagger-ui resource");
+			InputStream is = this.getClass().getResourceAsStream("/com/crivano/swaggerservlet/dist/" + resource);
+			String sSwagger = SwaggerUtils.convertStreamToString(is);
+			byte[] ab = sSwagger.getBytes();
+			if (resource.endsWith(".html"))
+				response.setContentType("text/html");
+			else if (resource.endsWith(".css"))
+				response.setContentType("text/css");
+			else if (resource.endsWith(".js"))
+				response.setContentType("text/javascript");
+			else if (resource.endsWith(".png"))
+				response.setContentType("image/png");
+			response.setContentLength(ab.length);
+			response.getOutputStream().write(ab);
+			response.getOutputStream().flush();
 		} else if ("GET".equals(req.getMethod()) && req.getPathInfo() != null && req.getPathInfo().equals("/test")) {
 			Test.run(this, dependencies, properties, req, response);
 		} else
