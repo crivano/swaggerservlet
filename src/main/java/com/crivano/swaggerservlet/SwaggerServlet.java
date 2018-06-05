@@ -25,7 +25,8 @@ import com.crivano.swaggerservlet.property.IProperty;
 import com.crivano.swaggerservlet.test.Test;
 
 public class SwaggerServlet extends HttpServlet {
-	private static final Logger log = LoggerFactory.getLogger(SwaggerServlet.class);
+	private static final Logger log = LoggerFactory
+			.getLogger(SwaggerServlet.class);
 
 	private static final long serialVersionUID = 4436503480265700847L;
 
@@ -42,7 +43,8 @@ public class SwaggerServlet extends HttpServlet {
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
 
-		try (InputStream is = config.getServletContext().getResourceAsStream("/META-INF/MANIFEST.MF")) {
+		try (InputStream is = config.getServletContext().getResourceAsStream(
+				"/META-INF/MANIFEST.MF")) {
 			String m = SwaggerUtils.convertStreamToString(is);
 			m = m.replaceAll("\r\n", "\n");
 			for (String s : m.split("\n")) {
@@ -83,14 +85,17 @@ public class SwaggerServlet extends HttpServlet {
 		return manifest;
 	}
 
-	protected void prepare(HttpServletRequest request, HttpServletResponse response) throws Exception {
+	protected void prepare(HttpServletRequest request,
+			HttpServletResponse response) throws Exception {
 		String requestMethod = request.getMethod();
 		String requestPathInfo = request.getPathInfo();
 		prepare(requestMethod, requestPathInfo);
 	}
 
-	public void prepare(String requestMethod, String requestPathInfo) throws ClassNotFoundException,
-			NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+	public void prepare(String requestMethod, String requestPathInfo)
+			throws ClassNotFoundException, NoSuchMethodException,
+			InstantiationException, IllegalAccessException,
+			InvocationTargetException {
 		Prepared p = new Prepared();
 		current.set(null);
 
@@ -107,11 +112,15 @@ public class SwaggerServlet extends HttpServlet {
 		p.context = p.action.getContext();
 		p.cacheable = p.action instanceof ISwaggerCacheableMethod;
 
-		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class.forName(
-				swagger.getInterfacePackage() + "." + swagger.getInterfaceName() + "$" + p.actionName + "Request");
+		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class
+				.forName(swagger.getInterfacePackage() + "."
+						+ swagger.getInterfaceName() + "$" + p.actionName
+						+ "Request");
 
-		p.clazzResponse = (Class<? extends ISwaggerResponse>) Class.forName(
-				swagger.getInterfacePackage() + "." + swagger.getInterfaceName() + "$" + p.actionName + "Response");
+		p.clazzResponse = (Class<? extends ISwaggerResponse>) Class
+				.forName(swagger.getInterfacePackage() + "."
+						+ swagger.getInterfaceName() + "$" + p.actionName
+						+ "Response");
 		p.req = p.clazzRequest.newInstance();
 		p.resp = p.clazzResponse.newInstance();
 
@@ -164,40 +173,52 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	@Override
-	protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+	protected void doDelete(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
 		// TODO Auto-generated method stub
 		doPost(req, resp);
 	}
 
 	@Override
-	public void doGet(HttpServletRequest req, HttpServletResponse response) throws ServletException, IOException {
+	public void doGet(HttpServletRequest req, HttpServletResponse response)
+			throws ServletException, IOException {
 
 		// Return the swagger.yaml that is placed at
 		// src/main/webapp/{servletpath}/swagger.yaml
 		//
-		if (req.getPathInfo() != null && req.getPathInfo().endsWith("/swagger.yaml")) {
+		if (req.getPathInfo() != null
+				&& req.getPathInfo().endsWith("/swagger.yaml")) {
 			InputStream is = getSwaggerYamlAsStream();
 			if (is == null) {
 				is = this.getClass().getResourceAsStream("/swagger.yaml");
 			}
 			String sSwagger = SwaggerUtils.convertStreamToString(is);
+			sSwagger = sSwagger.replaceFirst("basePath: [^\\s]+", "basePath: "
+					+ req.getRequestURI().replace("/swagger.yaml", ""));
 			byte[] ab = sSwagger.getBytes();
 			response.setContentType("text/x-yaml");
 			response.setContentLength(ab.length);
 			response.getOutputStream().write(ab);
 			response.getOutputStream().flush();
-		} else if (req.getPathInfo() != null && req.getPathInfo().endsWith("/swagger-ui")) {
-			response.sendRedirect(req.getRequestURL() + "/index.html?url="
-					+ req.getRequestURL().substring(0, req.getRequestURL().length() - "/swagger-ui".length())
-					+ "/swagger.yaml");
-		} else if (req.getPathInfo() != null && req.getPathInfo().contains("/swagger-ui/")) {
+		} else if (req.getPathInfo() != null
+				&& req.getPathInfo().endsWith("/swagger-ui")) {
+			response.sendRedirect(req.getRequestURL()
+					+ "/index.html?url="
+					+ req.getRequestURL().substring(
+							0,
+							req.getRequestURL().length()
+									- "/swagger-ui".length()) + "/swagger.yaml");
+		} else if (req.getPathInfo() != null
+				&& req.getPathInfo().contains("/swagger-ui/")) {
 			// Return components of the swagger-ui
 			//
-			String resource = req.getPathInfo()
-					.substring(req.getPathInfo().lastIndexOf("/swagger-ui/") + "/swagger-ui/".length());
+			String resource = req.getPathInfo().substring(
+					req.getPathInfo().lastIndexOf("/swagger-ui/")
+							+ "/swagger-ui/".length());
 			if (!resource.matches("^[a-z0-9\\.-]+$"))
 				throw new ServletException("Invalid swagger-ui resource");
-			InputStream is = this.getClass().getResourceAsStream("/com/crivano/swaggerservlet/dist/" + resource);
+			InputStream is = this.getClass().getResourceAsStream(
+					"/com/crivano/swaggerservlet/dist/" + resource);
 			String sSwagger = SwaggerUtils.convertStreamToString(is);
 			byte[] ab = sSwagger.getBytes();
 			if (resource.endsWith(".html"))
@@ -211,21 +232,25 @@ public class SwaggerServlet extends HttpServlet {
 			response.setContentLength(ab.length);
 			response.getOutputStream().write(ab);
 			response.getOutputStream().flush();
-		} else if ("GET".equals(req.getMethod()) && req.getPathInfo() != null && req.getPathInfo().equals("/test")) {
+		} else if ("GET".equals(req.getMethod()) && req.getPathInfo() != null
+				&& req.getPathInfo().equals("/test")) {
 			Test.run(this, dependencies, properties, req, response);
 		} else
 			doPost(req, response);
 	}
 
 	public InputStream getSwaggerYamlAsStream() {
-		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+		ClassLoader classLoader = Thread.currentThread()
+				.getContextClassLoader();
 		String path = swagger.getInterfacePackage().replace(".", "/");
-		InputStream is = classLoader.getResourceAsStream(path + "/swagger.yaml");
+		InputStream is = classLoader
+				.getResourceAsStream(path + "/swagger.yaml");
 		return is;
 	}
 
 	@Override
-	public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	public void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		ISwaggerRequest req = null;
 		ISwaggerResponse resp = null;
 
@@ -259,7 +284,9 @@ public class SwaggerServlet extends HttpServlet {
 				// }
 			}
 
-			if (getAuthorization() != null && !getAuthorization().equals(getAuthorizationFromHeader(request)))
+			if (getAuthorization() != null
+					&& !getAuthorization().equals(
+							getAuthorizationFromHeader(request)))
 				throw new Exception("Unauthorized.");
 
 			run(req, resp);
@@ -278,8 +305,10 @@ public class SwaggerServlet extends HttpServlet {
 					response.setContentLength(r.getContentlength().intValue());
 				response.setContentType(r.getContenttype());
 				if (r.getContentdisposition() != null)
-					response.setHeader("Content-Disposition", r.getContentdisposition());
-				SwaggerUtils.transferContent(r.getInputstream(), response.getOutputStream());
+					response.setHeader("Content-Disposition",
+							r.getContentdisposition());
+				SwaggerUtils.transferContent(r.getInputstream(),
+						response.getOutputStream());
 				return;
 			}
 
@@ -287,7 +316,8 @@ public class SwaggerServlet extends HttpServlet {
 				if (fCanReturnPayload && swagger.has(resp, "contenttype")) {
 					byte[] payload = (byte[]) swagger.get(resp, "payload");
 					response.setContentLength(payload.length);
-					response.setContentType((String) swagger.get(resp, "contenttype"));
+					response.setContentType((String) swagger.get(resp,
+							"contenttype"));
 					response.getOutputStream().write(payload);
 					response.getOutputStream().flush();
 					response.getOutputStream().close();
@@ -305,7 +335,8 @@ public class SwaggerServlet extends HttpServlet {
 			lr.response = resp;
 			log.debug("HTTP-OK: " + SwaggerUtils.toJson(lr));
 
-			SwaggerUtils.writeJsonResp(response, resp, getContext(), getService());
+			SwaggerUtils.writeJsonResp(response, resp, getContext(),
+					getService());
 			response.getWriter().close();
 		} catch (Exception e) {
 			try {
@@ -313,8 +344,9 @@ public class SwaggerServlet extends HttpServlet {
 				if (e instanceof SwaggerAuthorizationException)
 					sts = 401;
 
-				SwaggerError error = SwaggerUtils.writeJsonError(sts, request, response, e, req, resp, getContext(),
-						getService(), getUser());
+				SwaggerError error = SwaggerUtils.writeJsonError(sts, request,
+						response, e, req, resp, getContext(), getService(),
+						getUser());
 				response.getWriter().close();
 
 				if (shouldBeLogged(sts, e)) {
@@ -324,7 +356,8 @@ public class SwaggerServlet extends HttpServlet {
 					log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
 				}
 			} catch (Exception e2) {
-				if (e.getMessage() != null && e.getMessage().contains("Connection reset"))
+				if (e.getMessage() != null
+						&& e.getMessage().contains("Connection reset"))
 					return;
 				throw new RuntimeException("Error returning error message.", e);
 			}
@@ -361,20 +394,24 @@ public class SwaggerServlet extends HttpServlet {
 		s = s.trim();
 
 		if (s.startsWith("Basic ")) {
-			String userpass = new String(SwaggerUtils.base64Decode(s.substring(6)));
+			String userpass = new String(SwaggerUtils.base64Decode(s
+					.substring(6)));
 			s = userpass.split(":")[1];
 		}
 		return s;
 
 	}
 
-	public ISwaggerRequest injectVariables(HttpServletRequest request, ISwaggerRequest req) throws Exception {
+	public ISwaggerRequest injectVariables(HttpServletRequest request,
+			ISwaggerRequest req) throws Exception {
 		Prepared prepared = current.get();
 
 		// Inject JSON body parameters
 		try {
-			if (request.getContentType() != null && request.getContentType().startsWith("application/json")) {
-				ISwaggerRequest reqFromJson = SwaggerUtils.getJsonReq(request, getContext(), prepared.clazzRequest);
+			if (request.getContentType() != null
+					&& request.getContentType().startsWith("application/json")) {
+				ISwaggerRequest reqFromJson = SwaggerUtils.getJsonReq(request,
+						getContext(), prepared.clazzRequest);
 				if (reqFromJson != null) {
 					req = reqFromJson;
 					prepared.req = req;
@@ -389,15 +426,18 @@ public class SwaggerServlet extends HttpServlet {
 		while (paramNames != null && paramNames.hasMoreElements()) {
 			String paramName = (String) paramNames.nextElement();
 			String[] paramValues = request.getParameterValues(paramName);
-			if (request.getParameter(paramName) instanceof String && !swagger.has(req, paramName))
+			if (request.getParameter(paramName) instanceof String
+					&& !swagger.has(req, paramName))
 				swagger.set(req, paramName, request.getParameter(paramName));
 		}
 
 		// Inject querystring parameters
 		for (Object key : request.getParameterMap().keySet())
-			if (key instanceof String && request.getParameter((String) key) instanceof String
+			if (key instanceof String
+					&& request.getParameter((String) key) instanceof String
 					&& !Swagger.has(req, (String) key))
-				Swagger.set(req, (String) key, request.getParameter((String) key));
+				Swagger.set(req, (String) key,
+						request.getParameter((String) key));
 
 		// Inject path parameters
 		swagger.injectPathVariables(req, prepared.matchingPath);
@@ -405,13 +445,14 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	@Override
-	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+	public void doPut(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
 		doPost(req, resp);
 	}
 
 	@Override
-	public void doOptions(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
+	public void doOptions(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
 		corsHeaders(response);
 		response.setStatus(200);
 		response.getWriter().write("OK");
@@ -420,8 +461,10 @@ public class SwaggerServlet extends HttpServlet {
 
 	public static void corsHeaders(HttpServletResponse response) {
 		response.addHeader("Access-Control-Allow-Origin", "*");
-		response.addHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS");
-		response.addHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+		response.addHeader("Access-Control-Allow-Methods",
+				"GET,POST,DELETE,PUT,OPTIONS");
+		response.addHeader("Access-Control-Allow-Headers",
+				"Content-Type,Authorization");
 	}
 
 	public String getAuthorization() {
@@ -440,12 +483,14 @@ public class SwaggerServlet extends HttpServlet {
 		this.authorizationToProperties = authorization;
 	}
 
-	public void run(ISwaggerRequest req, ISwaggerResponse resp) throws Exception {
+	public void run(ISwaggerRequest req, ISwaggerResponse resp)
+			throws Exception {
 		Prepared prepared = current.get();
-		Class<? extends ISwaggerMethod> clazzAction = prepared.action.getClass();
+		Class<? extends ISwaggerMethod> clazzAction = prepared.action
+				.getClass();
 		try {
-			clazzAction.getMethod("run", prepared.clazzRequest, prepared.clazzResponse).invoke(prepared.action, req,
-					resp);
+			clazzAction.getMethod("run", prepared.clazzRequest,
+					prepared.clazzResponse).invoke(prepared.action, req, resp);
 		} catch (InvocationTargetException ex) {
 			if (ex.getCause() instanceof Exception)
 				throw (Exception) ex.getCause();
