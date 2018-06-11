@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -220,13 +221,13 @@ public class SwaggerServlet extends HttpServlet {
 			InputStream is = this.getClass().getResourceAsStream(
 					"/com/crivano/swaggerservlet/dist/" + resource);
 			String sSwagger = SwaggerUtils.convertStreamToString(is);
-			byte[] ab = sSwagger.getBytes();
+			byte[] ab = sSwagger.getBytes(StandardCharsets.UTF_8);
 			if (resource.endsWith(".html"))
-				response.setContentType("text/html");
+				response.setContentType("text/html; charset=utf-8");
 			else if (resource.endsWith(".css"))
-				response.setContentType("text/css");
+				response.setContentType("text/css; charset=utf-8");
 			else if (resource.endsWith(".js"))
-				response.setContentType("text/javascript");
+				response.setContentType("text/javascript; charset=utf-8");
 			else if (resource.endsWith(".png"))
 				response.setContentType("image/png");
 			response.setContentLength(ab.length);

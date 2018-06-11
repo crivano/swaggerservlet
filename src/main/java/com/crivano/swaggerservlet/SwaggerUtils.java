@@ -312,7 +312,7 @@ public class SwaggerUtils {
 	public static String convertStreamToString(java.io.InputStream is) {
 		if (is == null)
 			return null;
-		try (java.util.Scanner s = new java.util.Scanner(is)) {
+		try (java.util.Scanner s = new java.util.Scanner(is, "UTF-8")) {
 			return s.useDelimiter("\\A").hasNext() ? s.next() : "";
 		}
 	}
