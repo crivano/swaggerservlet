@@ -1,6 +1,8 @@
 package com.crivano.swaggerservlet;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
 
 public interface ISwaggerResponseFile {
 	public String getContenttype();
@@ -18,4 +20,8 @@ public interface ISwaggerResponseFile {
 	public InputStream getInputstream();
 
 	public void setInputstream(InputStream inputstream);
+
+	public Map<String, List<String>> getHeaderFields();
+
+	public void setHeaderFields(Map<String, List<String>> headerFields);
 }

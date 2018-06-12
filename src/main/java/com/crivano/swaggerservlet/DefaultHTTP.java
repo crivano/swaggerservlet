@@ -62,6 +62,7 @@ public class DefaultHTTP implements IHTTP {
 			resp.setContentlength((long) con.getContentLength());
 			resp.setContenttype(con.getContentType());
 			resp.setInputstream(con.getInputStream());
+			resp.setHeaderFields(con.getHeaderFields());
 			return (T) resp;
 		}
 

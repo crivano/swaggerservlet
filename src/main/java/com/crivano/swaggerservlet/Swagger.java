@@ -273,10 +273,11 @@ public class Swagger {
 				if (contentdisposition != null)
 					sb.append(" = \"" + contentdisposition + "\"");
 			}
-			sb.append(";\n\n");
+			sb.append(";\n");
 			sb.append("\t\tpublic Long contentlength;\n");
 			sb.append("\t\tpublic InputStream inputstream;\n");
-
+			sb.append("\t\tpublic Map<String, List<String>> headerFields;\n\n");
+			
 			sb.append("\t\tpublic String getContenttype() {\n");
 			sb.append("\t\t\treturn contenttype;\n");
 			sb.append("\t\t}\n");
@@ -300,6 +301,12 @@ public class Swagger {
 			sb.append("\t\t}\n");
 			sb.append("\t\tpublic void setInputstream(InputStream inputstream) {\n");
 			sb.append("\t\t\tthis.inputstream = inputstream;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic Map<String, List<String>> getHeaderFields() {\n");
+			sb.append("\t\t\treturn headerFields;\n");
+			sb.append("\t\t}\n");
+			sb.append("\t\tpublic void setHeaderFields(Map<String, List<String>> headerFields) {\n");
+			sb.append("\t\t\tthis.headerFields = headerFields;\n");
 			sb.append("\t\t}\n");
 		} else if (properties != null) {
 			for (String propertyKey : properties.keySet()) {
