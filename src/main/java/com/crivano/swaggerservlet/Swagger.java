@@ -152,7 +152,10 @@ public class Swagger {
 	}
 
 	public String getInfoTitle() {
-		return ((Map<String, Map<String, String>>) swagger).get("info").get("title");
+		Map<String, String> info = ((Map<String, Map<String, String>>) swagger).get("info");
+		if (info == null)
+			return null;
+		return info.get("title");
 	}
 
 	public String create(boolean singleLine) {

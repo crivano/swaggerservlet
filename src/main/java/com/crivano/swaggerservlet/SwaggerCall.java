@@ -2,6 +2,7 @@ package com.crivano.swaggerservlet;
 
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -66,6 +67,8 @@ public class SwaggerCall {
 					Object v = f.get(req);
 					if (v == null)
 						continue;
+					if (v instanceof Date)
+						v = SwaggerUtils.format((Date) v);
 					sb.append(first && !url.contains("?") ? "?" : "&");
 					first = false;
 					sb.append(f.getName());
