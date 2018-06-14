@@ -13,19 +13,13 @@ public abstract class SwaggerTestSupport extends TestCase {
 	protected void setUp() throws Exception {
 		super.setUp();
 
-		ss = new SwaggerServlet() {
-			@Override
-			protected String getContext() {
-				return "test";
-			}
-		};
+		ss = new SwaggerServlet();
 
 		ss.setAPI(getAPI());
 		ss.setActionPackage(getPackage());
 	}
 
-	public void run(String method, String pathInfo, ISwaggerRequest req,
-			ISwaggerResponse resp) {
+	public void run(String method, String pathInfo, ISwaggerRequest req, ISwaggerResponse resp) {
 		try {
 			ss.prepare(method, pathInfo);
 			ss.run(req, resp);

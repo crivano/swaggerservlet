@@ -345,25 +345,17 @@ public class SwaggerServlet extends HttpServlet {
 		response.getWriter().close();
 	}
 
-	/**
-	 * What error code should we output for this exception?
-	 * 
-	 * @param e
-	 * @return
-	 */
+	
+	// What error code should we output for this exception?
+	// 
 	public int errorCode(Exception e) {
 		if (e instanceof SwaggerException)
 			return ((SwaggerException) e).getStatus();
 		return 500;
 	}
 
-	/**
-	 * Should this exception be logged?
-	 * 
-	 * @param sts
-	 * @param s
-	 * @return
-	 */
+	// Should this exception be logged?
+	// 
 	public boolean shouldBeLogged(int sts, Exception e) {
 		return sts >= 500 && !(e instanceof IUnloggedException);
 	}

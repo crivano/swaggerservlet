@@ -9,12 +9,10 @@ import java.io.StringWriter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import junit.framework.TestCase;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.crivano.swaggerservlet.ISwaggerPetstore.PetPetIdGetRequest;
+import junit.framework.TestCase;
 
 /**
  * Unit test for simple App.
@@ -27,12 +25,7 @@ public class SwaggerServletTest extends TestCase {
 	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
-		ss = new SwaggerServlet() {
-			@Override
-			protected String getContext() {
-				return "test";
-			}
-		};
+		ss = new SwaggerServlet();
 		ss.setAPI(ISwaggerPetstore.class);
 		ss.setActionPackage("com.crivano.swaggerservlet");
 	}
@@ -49,7 +42,7 @@ public class SwaggerServletTest extends TestCase {
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
 		ss.prepare(request, null);
-		req = (PetPetIdGetRequest) ss.injectVariables(request, req);
+		req = (ISwaggerPetstore.PetPetIdGetRequest) ss.injectVariables(request, req);
 		ss.run(req, resp);
 
 		assertEquals("white", resp.color);
@@ -107,11 +100,10 @@ public class SwaggerServletTest extends TestCase {
 
 		JSONObject resp = new JSONObject(sw.toString());
 
-		JSONObject errordetails = resp.getJSONArray("errordetails")
-				.getJSONObject(0);
+		JSONObject errordetails = resp.getJSONArray("errordetails").getJSONObject(0);
 
 		assertEquals("unknown petId", resp.get("errormsg"));
-		assertEquals("test", errordetails.get("context"));
+		// assertEquals("test", errordetails.get("context"));
 		assertEquals("Swagger Petstore", errordetails.get("service"));
 		assertNotNull(errordetails.get("stacktrace"));
 	}

@@ -122,14 +122,6 @@ public class Swagger {
 		throw new RuntimeException("path/method undefined: " + path.swaggerPath + "/" + path.method);
 	}
 
-	/**
-	 * Put path variables at the req, if not there yet.
-	 * 
-	 * @param req
-	 * @param swaggerPath
-	 * @param m
-	 * @throws Exception
-	 */
 	public void injectPathVariables(ISwaggerRequest req, Path path) throws Exception {
 		Pattern pv = Pattern.compile("\\{(?<var>[^\\}]+)\\}");
 		Matcher mv = pv.matcher(path.swaggerPath);
