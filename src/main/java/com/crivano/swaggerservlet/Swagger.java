@@ -3,6 +3,7 @@ package com.crivano.swaggerservlet;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -433,6 +434,8 @@ public class Swagger {
 			v = new Long(value);
 		if (field.getType() == Boolean.class)
 			v = new Boolean(value);
+		if (field.getType() == Date.class)
+			v = SwaggerUtils.parse(value);
 		field.setAccessible(true);
 		field.set(model, v);
 	}
