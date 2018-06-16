@@ -29,7 +29,7 @@ public class SwaggerServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 4436503480265700847L;
 
-	private static Swagger swagger = null;
+	private Swagger swagger = null;
 	private String actionpackage = null;
 	private Map<String, IDependency> dependencies = new TreeMap<>();
 	private List<IProperty> properties = new ArrayList<>();
@@ -59,6 +59,7 @@ public class SwaggerServlet extends HttpServlet {
 		String actionName;
 		ISwaggerMethod action;
 		String context;
+		String service;
 		boolean cacheable;
 		Swagger.Path matchingPath;
 		Class<? extends ISwaggerRequest> clazzRequest;
@@ -105,6 +106,7 @@ public class SwaggerServlet extends HttpServlet {
 		p.action = (ISwaggerMethod) ctor.newInstance();
 
 		p.context = p.action.getContext();
+		p.service = getService();
 		p.cacheable = p.action instanceof ISwaggerCacheableMethod;
 
 		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class.forName(
@@ -147,7 +149,7 @@ public class SwaggerServlet extends HttpServlet {
 		return cacheable;
 	}
 
-	public static String getService() {
+	public String getService() {
 		return swagger.getInfoTitle();
 	}
 
@@ -319,19 +321,19 @@ public class SwaggerServlet extends HttpServlet {
 			return;
 		}
 
-		try {
-			if (fCanReturnPayload && swagger.has(resp, "contenttype")) {
-				byte[] payload = (byte[]) swagger.get(resp, "payload");
-				response.setContentLength(payload.length);
-				response.setContentType((String) swagger.get(resp, "contenttype"));
-				response.getOutputStream().write(payload);
-				response.getOutputStream().flush();
-				response.getOutputStream().close();
-				return;
-			}
-		} catch (Exception ex) {
-
-		}
+//		try {
+//			if (fCanReturnPayload && swagger.has(resp, "contenttype")) {
+//				byte[] payload = (byte[]) swagger.get(resp, "payload");
+//				response.setContentLength(payload.length);
+//				response.setContentType((String) swagger.get(resp, "contenttype"));
+//				response.getOutputStream().write(payload);
+//				response.getOutputStream().flush();
+//				response.getOutputStream().close();
+//				return;
+//			}
+//		} catch (Exception ex) {
+//
+//		}
 
 		if (isCacheable()) {
 			// RestUtils.cacheStoreJson(getContext(), req, resp);
@@ -341,7 +343,7 @@ public class SwaggerServlet extends HttpServlet {
 		lr.response = resp;
 		log.debug("HTTP-OK: " + SwaggerUtils.toJson(lr));
 
-		SwaggerUtils.writeJsonResp(response, resp, getContext(), getService());
+		SwaggerUtils.writeJsonResp(response, resp, getContext(), current.get().service);
 		response.getWriter().close();
 	}
 
