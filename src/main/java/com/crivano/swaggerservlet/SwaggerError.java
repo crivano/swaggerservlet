@@ -3,7 +3,7 @@ package com.crivano.swaggerservlet;
 import java.util.List;
 
 public class SwaggerError implements ISwaggerResponse {
-	public class Detail {
+	public static class Detail {
 		String context;
 		String service;
 		String stacktrace;

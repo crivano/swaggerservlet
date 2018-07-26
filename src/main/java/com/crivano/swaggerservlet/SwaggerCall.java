@@ -24,6 +24,10 @@ public class SwaggerCall {
 		SwaggerCall.http = http;
 	}
 
+	public static void setExecutor(ExecutorService executor) {
+		SwaggerCall.executor = executor;
+	}
+
 	public static <T extends ISwaggerResponse> T call(String context, String authorization, String method, String url,
 			ISwaggerRequest req, Class<T> clazz) throws Exception {
 		T resp = null;

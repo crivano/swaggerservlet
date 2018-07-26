@@ -224,7 +224,7 @@ public class SwaggerUtils {
 			error.errordetails = new ArrayList<>();
 		}
 
-		SwaggerError.Detail detail = error.new Detail();
+		SwaggerError.Detail detail = new SwaggerError.Detail();
 		detail.context = context;
 		detail.service = service;
 		detail.stacktrace = errstack;

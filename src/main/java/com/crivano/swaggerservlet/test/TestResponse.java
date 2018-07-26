@@ -24,6 +24,9 @@ public class TestResponse extends SwaggerError {
 	List<TestResponse> dependencies;
 	Map<String, String> properties;
 
+	public TestResponse() {
+	}
+
 	public TestResponse(String category, String service, String url, String responsable, Boolean partial) {
 		this.category = category;
 		this.service = service;

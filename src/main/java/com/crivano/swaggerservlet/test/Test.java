@@ -113,6 +113,8 @@ public class Test {
 										.callAsync("test- " + service, null, "GET",
 												dep.getUrl() + "/test" + sb.toString(), null, TestResponse.class)
 										.get(time_left, TimeUnit.MILLISECONDS);
+								if (resp.getException() != null)
+									throw resp.getException();
 								TestResponse r = resp.getResp();
 								r.category = dep.getCategory();
 								r.service = dep.getService();
