@@ -9,7 +9,7 @@ For a quick start, you can use this snippet in your maven POM:
 <dependency>
     <groupId>com.crivano</groupId>
     <artifactId>swaggerservlet</artifactId>
-    <version>1.0</version>
+    <version>1.15.0</version>
 </dependency>
 ```
 
