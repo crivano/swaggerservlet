@@ -502,10 +502,12 @@ public class SwaggerServlet extends HttpServlet {
 			clazzAction.getMethod("run", prepared.clazzRequest,
 					prepared.clazzResponse).invoke(prepared.action, req, resp);
 		} catch (InvocationTargetException ex) {
-			if (ex.getCause() instanceof Exception)
-				throw (Exception) ex.getCause();
-			else
-				throw ex;
+			Exception exc = ex;
+			if (exc.getCause() != null && exc.getCause() instanceof Exception)
+				exc = (Exception) exc.getCause();
+			if (exc instanceof ServletException && exc.getCause() != null && exc.getCause() instanceof Exception)
+				exc = (Exception) exc.getCause();
+			throw exc;
 		}
 	}
 
