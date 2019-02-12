@@ -35,13 +35,14 @@ public class Swagger {
 			for (String funcKey : path.keySet()) {
 				Map<String, Object> func = (Map<String, Object>) path.get(funcKey);
 				List<Map<String, Object>> parameters = (List<Map<String, Object>>) func.get("parameters");
-				for (int i = 0; i < parameters.size(); i++) {
-					Map<String, Object> param = parameters.get(i);
-					if (param.containsKey("$ref")) {
-						String ref = (String) (Object) param.get("$ref");
-						parameters.set(i, swaggerGetReference(ref));
+				if (parameters != null)
+					for (int i = 0; i < parameters.size(); i++) {
+						Map<String, Object> param = parameters.get(i);
+						if (param.containsKey("$ref")) {
+							String ref = (String) (Object) param.get("$ref");
+							parameters.set(i, swaggerGetReference(ref));
+						}
 					}
-				}
 			}
 		}
 	}
@@ -186,14 +187,15 @@ public class Swagger {
 				sb.append("\tpublic class ");
 				sb.append(method);
 				sb.append("Request implements ISwaggerRequest {\n");
-				for (int i = 0; i < parameters.size(); i++) {
-					Map<String, Object> param = parameters.get(i);
-					sb.append("\t\tpublic ");
-					sb.append(toJavaType((String) param.get("type"), (String) param.get("format"), null));
-					sb.append(" ");
-					sb.append(param.get("name"));
-					sb.append(";\n");
-				}
+				if (parameters != null)
+					for (int i = 0; i < parameters.size(); i++) {
+						Map<String, Object> param = parameters.get(i);
+						sb.append("\t\tpublic ");
+						sb.append(toJavaType((String) param.get("type"), (String) param.get("format"), null));
+						sb.append(" ");
+						sb.append(param.get("name"));
+						sb.append(";\n");
+					}
 				sb.append("\t}\n\n");
 
 				// Response
@@ -273,7 +275,7 @@ public class Swagger {
 			sb.append("\t\tpublic Long contentlength;\n");
 			sb.append("\t\tpublic InputStream inputstream;\n");
 			sb.append("\t\tpublic Map<String, List<String>> headerFields;\n\n");
-			
+
 			sb.append("\t\tpublic String getContenttype() {\n");
 			sb.append("\t\t\treturn contenttype;\n");
 			sb.append("\t\t}\n");
