@@ -3,13 +3,19 @@ package com.crivano.swaggerservlet;
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.crivano.swaggerservlet.SwaggerMultipleCallResult.ListStatus;
 import com.crivano.swaggerservlet.test.TestResponse;
 
 public class SwaggerCall {
@@ -96,6 +102,53 @@ public class SwaggerCall {
 			String errstack = SwaggerUtils.stackAsString(ex);
 			throw new SwaggerException(errmsg, 500, ex, req, null, context);
 		}
+	}
+
+	public static SwaggerMultipleCallResult callMultiple(Map<String, SwaggerCallParameters> mapp,
+			long timeoutMilliseconds) throws Exception {
+		SwaggerMultipleCallResult r = new SwaggerMultipleCallResult();
+
+		Map<String, Future<SwaggerAsyncResponse<ISwaggerResponse>>> map = new HashMap<>();
+		final CountDownLatch responseWaiter = new CountDownLatch(mapp.size());
+
+		Date dt1 = new Date();
+
+		for (String system : mapp.keySet()) {
+			SwaggerCallParameters scp = mapp.get(system);
+			map.put(system, callAsync(scp.context, scp.authorization, scp.method, scp.url, scp.req, scp.clazz));
+		}
+
+		for (String system : mapp.keySet()) {
+			try {
+				long timeout = timeoutMilliseconds - ((new Date()).getTime() - dt1.getTime());
+				if (timeout < 0L)
+					timeout = 0;
+				SwaggerAsyncResponse futureresponse = map.get(system).get(timeout, TimeUnit.MILLISECONDS);
+				ListStatus ls = new ListStatus();
+				ls.system = system;
+				r.status.add(ls);
+				SwaggerException ex = futureresponse.getException();
+				if (ex != null) {
+					log.error("Erro obtendo a usuário de {}", system, ex);
+					ls.errormsg = SwaggerUtils.messageAsString(ex);
+					ls.stacktrace = SwaggerUtils.stackAsString(ex);
+				}
+				ISwaggerResponse o = futureresponse.getResp();
+				if (o != null)
+					r.responses.put(system, o);
+			} catch (Exception ex) {
+				ListStatus ls = new ListStatus();
+				ls.system = system;
+				ls.errormsg = SwaggerUtils.messageAsString(ex);
+				if (ls.errormsg == null)
+					ls.errormsg = ex.getClass().getName();
+				ls.stacktrace = SwaggerUtils.stackAsString(ex);
+				r.status.add(ls);
+				if (ex instanceof TimeoutException)
+					map.get(system).cancel(true);
+			}
+		}
+		return r;
 	}
 
 }
