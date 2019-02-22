@@ -34,7 +34,6 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 public class SwaggerUtils {
-	private static Map<String, String> properties = new HashMap<>();
 
 	private static IMemCache memcache = new DefaultMemCache();
 
@@ -42,34 +41,6 @@ public class SwaggerUtils {
 
 	public static void setCache(IMemCache memcache) {
 		SwaggerUtils.memcache = memcache;
-	}
-
-	public static String getProperty(String propertyName, String defaultValue) {
-		if (properties.containsKey(propertyName))
-			return properties.get(propertyName);
-		String s = System.getProperty(propertyName);
-		if (s != null)
-			return s;
-		s = System.getenv("PROP_" + propertyName.replace(".", "_").toUpperCase());
-		if (s != null)
-			return s;
-		return defaultValue;
-	}
-
-	public static String getRequiredProperty(String propertyName, String exceptionMessage, boolean presentableException)
-			throws Exception {
-		String property = getProperty(propertyName, null);
-		if (property == null) {
-			if (presentableException)
-				throw new PresentableException(exceptionMessage);
-			else
-				throw new Exception(exceptionMessage);
-		}
-		return property;
-	}
-
-	public static void setProperty(String propertyName, String value) {
-		properties.put(propertyName, value);
 	}
 
 	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";

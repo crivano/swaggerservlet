@@ -19,10 +19,12 @@ import com.crivano.swaggerservlet.SwaggerMultipleCallResult.ListStatus;
 import com.crivano.swaggerservlet.test.TestResponse;
 
 public class SwaggerCall {
+	public static final String SWAGGERSERVLET_THREADPOOL_SIZE = "swaggerservlet.threadpool.size";
+
 	private static final Logger log = LoggerFactory.getLogger(SwaggerCall.class);
 
 	private static ExecutorService executor = Executors
-			.newFixedThreadPool(new Integer(SwaggerUtils.getProperty("swaggerservlet.threadpool.size", "20")));
+			.newFixedThreadPool(new Integer(SwaggerServlet.getProperty(SWAGGERSERVLET_THREADPOOL_SIZE, "20")));
 
 	private static IHTTP http = new DefaultHTTP();
 
