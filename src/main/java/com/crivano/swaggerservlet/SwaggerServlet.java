@@ -22,10 +22,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.crivano.swaggerservlet.dependency.IDependency;
-import com.crivano.swaggerservlet.property.IProperty;
 import com.crivano.swaggerservlet.test.Test;
 
 public class SwaggerServlet extends HttpServlet {
+	private static final String SWAGGERSERVLET_PROPERTIES_SECRET_PROPERTY_NAME = "swaggerservlet.properties.secret";
+
 	private static final Logger log = LoggerFactory.getLogger(SwaggerServlet.class);
 
 	private static final long serialVersionUID = 4436503480265700847L;
@@ -35,17 +36,24 @@ public class SwaggerServlet extends HttpServlet {
 	private Swagger swagger = null;
 	private String actionpackage = null;
 	private Map<String, IDependency> dependencies = new TreeMap<>();
-	private List<IProperty> properties = new ArrayList<>();
+	private List<Property> properties = new ArrayList<>();
 	private Map<String, String> manifest = new TreeMap<>();
 
 	private String authorization = null;
 	private String authorizationToProperties = null;
 
-	@Override
-	public void init(ServletConfig config) throws ServletException {
-		super.init(config);
+	public static String servletContext = null;
 
+	@Override
+	public final void init(ServletConfig config) throws ServletException {
+		super.init(config);
 		instance = this;
+		servletContext = config.getServletContext().getContextPath().replace("/", "");
+
+		addRestrictedProperty(SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME,
+				SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_DEFAULT_VALUE);
+		addPrivateProperty(SWAGGERSERVLET_PROPERTIES_SECRET_PROPERTY_NAME, null);
+		setAuthorizationToProperties(getProperty(SWAGGERSERVLET_PROPERTIES_SECRET_PROPERTY_NAME));
 
 		try (InputStream is = config.getServletContext().getResourceAsStream("/META-INF/MANIFEST.MF")) {
 			String m = SwaggerUtils.convertStreamToString(is);
@@ -60,6 +68,17 @@ public class SwaggerServlet extends HttpServlet {
 		} catch (IOException e) {
 			log.error("INIT ERROR: ", e);
 		}
+
+		initialize(config);
+
+		try {
+			assertProperties();
+		} catch (Exception ex) {
+			log.error("PROPERTIES ERROR", ex);
+		}
+	}
+
+	protected void initialize(ServletConfig config) throws ServletException {
 	}
 
 	private static class Prepared {
@@ -81,44 +100,33 @@ public class SwaggerServlet extends HttpServlet {
 
 	private static Map<String, String> redefinedProperties = new HashMap<>();
 
-	public static String getProperty(String propertyName, String defaultValue) {
-		if (!SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE.equals(propertyName)) {
-			IProperty dp = getDefinedProperty(propertyName);
-			if (dp == null)
-				throw new RuntimeException("Can't access property '" + propertyName
-						+ "' because it was not declared in servlet's initialization");
-		}
-		if (redefinedProperties.containsKey(propertyName))
-			return redefinedProperties.get(propertyName);
-		String s = System.getProperty(propertyName);
+	public static String getProperty(final String propertyName) {
+		String name = servletContext + "." + propertyName;
+		Property dp = getDefinedProperty(name);
+		if (dp == null)
+			throw new RuntimeException(
+					"Can't access property '" + name + "' because it was not declared in servlet's initialization");
+		if (redefinedProperties.containsKey(name))
+			return redefinedProperties.get(name);
+		String s = System.getProperty(name);
 		if (s != null)
 			return s;
-		s = System.getenv("PROP_" + propertyName.replace(".", "_").toUpperCase());
+		s = System.getenv("PROP_" + name.replace(".", "_").toUpperCase());
 		if (s != null)
 			return s;
-		return defaultValue;
-	}
-
-	public static String getRequiredProperty(String propertyName, String exceptionMessage, boolean presentableException)
-			throws Exception {
-		String property = getProperty(propertyName, null);
-		if (property == null) {
-			if (presentableException)
-				throw new PresentableException(exceptionMessage);
-			else
-				throw new Exception(exceptionMessage);
-		}
-		return property;
+		if (dp.isOptional())
+			return dp.getDefaultValue();
+		throw new RuntimeException("Property '" + name + "' not defined");
 	}
 
 	public static void setProperty(String propertyName, String value) {
 		redefinedProperties.put(propertyName, value);
 	}
 
-	public static IProperty getDefinedProperty(String propertyName) {
+	public static Property getDefinedProperty(String propertyName) {
 		if (instance == null)
 			return null;
-		for (IProperty p : instance.properties)
+		for (Property p : instance.properties)
 			if (p.getName().equals(propertyName))
 				return p;
 		return null;
@@ -535,8 +543,35 @@ public class SwaggerServlet extends HttpServlet {
 		dependencies.put(dep.getService(), dep);
 	}
 
-	public void addProperty(IProperty p) {
-		properties.add(p);
+	public void addPrivateProperty(String name) {
+		properties.add(new Property(Property.Scope.PRIVATE, servletContext + "." + name, false, null));
+	}
+
+	public void addRestrictedProperty(String name) {
+		properties.add(new Property(Property.Scope.RESTRICTED, servletContext + "." + name, false, null));
+	}
+
+	public void addPublicProperty(String name) {
+		properties.add(new Property(Property.Scope.PUBLIC, servletContext + "." + name, false, null));
+	}
+
+	public void addPrivateProperty(String name, String defaultValue) {
+		properties.add(new Property(Property.Scope.PRIVATE, servletContext + "." + name, true, defaultValue));
+	}
+
+	public void addRestrictedProperty(String name, String defaultValue) {
+		properties.add(new Property(Property.Scope.RESTRICTED, servletContext + "." + name, true, defaultValue));
+	}
+
+	public void addPublicProperty(String name, String defaultValue) {
+		properties.add(new Property(Property.Scope.PUBLIC, servletContext + "." + name, true, defaultValue));
+	}
+
+	public void assertProperties() {
+		for (Property p : properties) {
+			if (p.getName().startsWith(servletContext + "."))
+				getProperty(p.getName().substring(servletContext.length() + 1));
+		}
 	}
 
 }

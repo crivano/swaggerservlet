@@ -19,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.crivano.swaggerservlet.LogResponse;
+import com.crivano.swaggerservlet.Property;
+import com.crivano.swaggerservlet.Property.Scope;
 import com.crivano.swaggerservlet.SwaggerAsyncResponse;
 import com.crivano.swaggerservlet.SwaggerCall;
 import com.crivano.swaggerservlet.SwaggerServlet;
@@ -26,13 +28,12 @@ import com.crivano.swaggerservlet.SwaggerUtils;
 import com.crivano.swaggerservlet.dependency.IDependency;
 import com.crivano.swaggerservlet.dependency.SwaggerServletDependency;
 import com.crivano.swaggerservlet.dependency.TestableDependency;
-import com.crivano.swaggerservlet.property.IProperty;
 
 public class Test {
 	private static final long DEFAULT_TIMEOUT_MILLISECONDS = 10000L;
 	private static final Logger log = LoggerFactory.getLogger(Test.class);
 
-	public static void run(SwaggerServlet ss, Map<String, IDependency> dependencies, List<IProperty> properties,
+	public static void run(SwaggerServlet ss, Map<String, IDependency> dependencies, List<Property> properties,
 			HttpServletRequest request, HttpServletResponse response) throws IOException {
 		long start_time = System.currentTimeMillis();
 		Set<String> skip = new HashSet<>();
@@ -67,19 +68,22 @@ public class Test {
 		boolean auth = ss.getAuthorizationToProperties() != null
 				&& ss.getAuthorizationToProperties().equals(request.getParameter("authorizationToProperties"));
 
-		for (IProperty p : properties) {
-			if (p.isPublic())
+		for (Property p : properties) {
+			if (p.getScope() == Scope.PUBLIC)
 				tr.addProperty(p.getName());
-			else if (p.isRestricted()) {
+			else if (p.getScope() == Scope.RESTRICTED) {
 				if (auth)
 					tr.addProperty(p.getName());
-			} else if (p.isPrivate())
-				if (auth)
+				else
 					tr.addPrivateProperty(p.getName());
+			} else if (p.getScope() == Scope.PRIVATE)
+				tr.addPrivateProperty(p.getName());
 		}
 
 		try {
 			try {
+				ss.assertProperties();
+
 				boolean dependenciesOK = true;
 				for (String service : dependencies.keySet()) {
 					IDependency dep = dependencies.get(service);
@@ -154,6 +158,7 @@ public class Test {
 			} catch (Exception e) {
 				tr.available = false;
 				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr);
+				log.error("Error testing swaggerservlet", e);
 			}
 			try {
 				if (tr.pass == null || tr.pass == false)
@@ -167,12 +172,8 @@ public class Test {
 			LogResponse lr = new LogResponse();
 			lr.method = request.getMethod();
 			lr.path = request.getContextPath() + request.getPathInfo();
-			try {
-			} catch (Exception ex) {
-				String details = SwaggerUtils.toJson(lr);
-				log.error("HTTP-ERROR: {}, EXCEPTION", details, ex);
-			}
-
+			String details = SwaggerUtils.toJson(lr);
+			log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
 		}
 	}
 

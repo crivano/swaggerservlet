@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.crivano.swaggerservlet.SwaggerError;
-import com.crivano.swaggerservlet.SwaggerUtils;
+import com.crivano.swaggerservlet.SwaggerServlet;
 
 public class TestResponse extends SwaggerError {
 	String category;
@@ -44,12 +44,12 @@ public class TestResponse extends SwaggerError {
 	public void addProperty(String name) {
 		if (properties == null)
 			properties = new TreeMap<>();
-		properties.put(name, SwaggerUtils.getProperty(name, "[undefined]"));
+		properties.put(name, System.getProperty(name, "[undefined]"));
 	}
 
 	public void addPrivateProperty(String name) {
 		if (properties == null)
 			properties = new TreeMap<>();
-		properties.put(name, SwaggerUtils.getProperty(name, null) != null ? "[defined]" : "[undefined]");
+		properties.put(name, System.getProperty(name) != null ? "[defined]" : "[undefined]");
 	}
 }
