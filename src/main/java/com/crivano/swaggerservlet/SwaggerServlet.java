@@ -31,7 +31,7 @@ public class SwaggerServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 4436503480265700847L;
 
-	private static SwaggerServlet instance = null;
+	static SwaggerServlet instance = null;
 
 	private Swagger swagger = null;
 	private String actionpackage = null;
@@ -101,7 +101,7 @@ public class SwaggerServlet extends HttpServlet {
 	private static Map<String, String> redefinedProperties = new HashMap<>();
 
 	public static String getProperty(final String propertyName) {
-		String name = servletContext + "." + propertyName;
+		String name = propertyName(propertyName);
 		Property dp = getDefinedProperty(name);
 		if (dp == null)
 			throw new RuntimeException(
@@ -543,28 +543,35 @@ public class SwaggerServlet extends HttpServlet {
 		dependencies.put(dep.getService(), dep);
 	}
 
+	public static String propertyName(String name) {
+		if (servletContext == null)
+			return name;
+		else
+			return servletContext + "." + name;
+	}
+
 	public void addPrivateProperty(String name) {
-		properties.add(new Property(Property.Scope.PRIVATE, servletContext + "." + name, false, null));
+		properties.add(new Property(Property.Scope.PRIVATE, propertyName(name), false, null));
 	}
 
 	public void addRestrictedProperty(String name) {
-		properties.add(new Property(Property.Scope.RESTRICTED, servletContext + "." + name, false, null));
+		properties.add(new Property(Property.Scope.RESTRICTED, propertyName(name), false, null));
 	}
 
 	public void addPublicProperty(String name) {
-		properties.add(new Property(Property.Scope.PUBLIC, servletContext + "." + name, false, null));
+		properties.add(new Property(Property.Scope.PUBLIC, propertyName(name), false, null));
 	}
 
 	public void addPrivateProperty(String name, String defaultValue) {
-		properties.add(new Property(Property.Scope.PRIVATE, servletContext + "." + name, true, defaultValue));
+		properties.add(new Property(Property.Scope.PRIVATE, propertyName(name), true, defaultValue));
 	}
 
 	public void addRestrictedProperty(String name, String defaultValue) {
-		properties.add(new Property(Property.Scope.RESTRICTED, servletContext + "." + name, true, defaultValue));
+		properties.add(new Property(Property.Scope.RESTRICTED, propertyName(name), true, defaultValue));
 	}
 
 	public void addPublicProperty(String name, String defaultValue) {
-		properties.add(new Property(Property.Scope.PUBLIC, servletContext + "." + name, true, defaultValue));
+		properties.add(new Property(Property.Scope.PUBLIC, propertyName(name), true, defaultValue));
 	}
 
 	public void assertProperties() {
