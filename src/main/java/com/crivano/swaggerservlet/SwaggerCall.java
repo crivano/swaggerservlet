@@ -136,7 +136,7 @@ public class SwaggerCall {
 					ls.errormsg = SwaggerUtils.messageAsString(ex);
 					ls.stacktrace = SwaggerUtils.stackAsString(ex);
 				}
-				ISwaggerResponse o = futureresponse.getResp();
+				ISwaggerResponse o = futureresponse.getRespOrThrowException();
 				if (o != null)
 					r.responses.put(system, o);
 			} catch (Exception ex) {

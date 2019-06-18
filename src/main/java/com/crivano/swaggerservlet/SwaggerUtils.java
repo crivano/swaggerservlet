@@ -212,6 +212,8 @@ public class SwaggerUtils {
 		if (errmsg == null)
 			if (e instanceof NullPointerException)
 				errmsg = "null pointer.";
+			else 
+				errmsg = e.getClass().getSimpleName();
 		return errmsg;
 	}
 

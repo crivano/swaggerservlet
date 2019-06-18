@@ -12,6 +12,12 @@ public class SwaggerAsyncResponse<T extends ISwaggerResponse> {
 		return this.resp;
 	}
 
+	public T getRespOrThrowException() throws SwaggerException {
+		if (getException() != null)
+			throw getException();
+		return this.resp;
+	}
+
 	public SwaggerException getException() {
 		return exception;
 	}

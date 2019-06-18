@@ -119,7 +119,7 @@ public class Test {
 										.get(time_left, TimeUnit.MILLISECONDS);
 								if (resp.getException() != null)
 									throw resp.getException();
-								TestResponse r = resp.getResp();
+								TestResponse r = resp.getRespOrThrowException();
 								r.category = dep.getCategory();
 								r.service = dep.getService();
 								r.url = dep.getUrl();
