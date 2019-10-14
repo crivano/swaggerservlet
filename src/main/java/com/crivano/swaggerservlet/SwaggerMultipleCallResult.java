@@ -7,12 +7,6 @@ import java.util.Map;
 
 public class SwaggerMultipleCallResult {
 
-	public static class ListStatus {
-		public String system;
-		public String errormsg;
-		public String stacktrace;
-	}
-
 	public Map<String, ISwaggerResponse> responses = new HashMap<>();
-	public List<ListStatus> status = new ArrayList<>();
+	public List<SwaggerCallStatus> status = new ArrayList<>();
 }

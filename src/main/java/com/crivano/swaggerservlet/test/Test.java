@@ -116,9 +116,7 @@ public class Test {
 								SwaggerAsyncResponse<TestResponse> resp = SwaggerCall
 										.callAsync("test- " + service, null, "GET",
 												dep.getUrl() + "/test" + sb.toString(), null, TestResponse.class)
-										.get(time_left, TimeUnit.MILLISECONDS);
-								if (resp.getException() != null)
-									throw resp.getException();
+										.get(time_left / 2, TimeUnit.MILLISECONDS);
 								TestResponse r = resp.getRespOrThrowException();
 								r.category = dep.getCategory();
 								r.service = dep.getService();
@@ -128,16 +126,16 @@ public class Test {
 							} else if (dep instanceof TestableDependency) {
 								tr2.available = ((TestableDependency) dep).test();
 							}
-						} catch (TimeoutException e) {
 						} catch (Exception e) {
 							tr2.available = false;
-							SwaggerUtils.buildSwaggerError(request, e, "testing", dep.getService(), null, tr2);
+							SwaggerUtils.buildSwaggerError(request, e, "testing", dep.getService(), null, tr2, null);
 						}
 						addToSkipList(skip, tr2, ref);
 						if (tr2.available != null && !tr2.available) {
 							dependenciesOK = false;
 							if (!isPartial) {
 								tr.available = false;
+								tr.errormsg = tr2.category + ": " + tr2.service + ": " + tr2.errormsg;
 							}
 						}
 					} else {
@@ -147,17 +145,17 @@ public class Test {
 					tr2.ms = System.currentTimeMillis() - current_time;
 					tr.addDependency(tr2);
 				}
-				if (tr.available == null) {
+				if (tr.available == null)
 					tr.available = ss.test();
-					if (!tr.available) {
-						tr.pass = false;
-						throw new Exception("Test is failing.");
-					} else
-						tr.pass = true;
-				}
+				if (!tr.available) {
+					tr.pass = false;
+					// throw new Exception("Test is failing.");
+				} else
+					tr.pass = true;
 			} catch (Exception e) {
 				tr.available = false;
-				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr);
+				tr.pass = false;
+				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr, null);
 				log.error("Error testing swaggerservlet", e);
 			}
 			try {

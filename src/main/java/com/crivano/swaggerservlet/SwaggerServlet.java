@@ -320,7 +320,8 @@ public class SwaggerServlet extends HttpServlet {
 				// }
 			}
 
-			if (getAuthorization() != null && !getAuthorization().equals(getAuthorizationFromHeader(request)))
+			if (!ISwaggerPublicMethod.class.isAssignableFrom(prepared.action.getClass()) && getAuthorization() != null
+					&& !getAuthorization().equals(getAuthorizationFromHeader(request)))
 				throw new Exception("Unauthorized.");
 
 			run(req, resp);
@@ -337,7 +338,8 @@ public class SwaggerServlet extends HttpServlet {
 					sts = 401;
 
 				SwaggerError error = SwaggerUtils.writeJsonError(sts, request, response, e, req, resp, getContext(),
-						getService(), getUser());
+						getService(), getUser(),
+						(e instanceof SwaggerDetailedException) ? ((SwaggerDetailedException) e).status : null);
 				response.getWriter().close();
 
 				if (shouldBeLogged(sts, e)) {

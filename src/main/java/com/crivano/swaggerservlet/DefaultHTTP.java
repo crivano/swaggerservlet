@@ -1,6 +1,7 @@
 package com.crivano.swaggerservlet;
 
 import java.io.DataOutputStream;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -43,7 +44,13 @@ public class DefaultHTTP implements IHTTP {
 		int responseCode = con.getResponseCode();
 
 		if (responseCode >= 400 && responseCode < 600) {
-			SwaggerError err = (SwaggerError) SwaggerUtils.fromJson(convertStreamToString(con.getErrorStream()),
+			SwaggerError err = null;
+			InputStream errorStream = null;
+			String string = null;
+			errorStream = con.getErrorStream();
+			if (errorStream != null)
+				string = convertStreamToString(errorStream);
+			err = (SwaggerError) SwaggerUtils.fromJson(string,
 					SwaggerError.class);
 			String errormsg = "HTTP ERROR: " + Integer.toString(responseCode);
 			if (con.getResponseMessage() != null)

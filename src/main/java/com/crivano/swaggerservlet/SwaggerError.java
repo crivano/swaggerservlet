@@ -16,4 +16,5 @@ public class SwaggerError implements ISwaggerResponse {
 
 	public String errormsg;
 	public List<Detail> errordetails;
+	public List<SwaggerCallStatus> errorstatus;
 }

@@ -15,7 +15,6 @@ import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.crivano.swaggerservlet.SwaggerMultipleCallResult.ListStatus;
 import com.crivano.swaggerservlet.test.TestResponse;
 
 public class SwaggerCall {
@@ -127,20 +126,21 @@ public class SwaggerCall {
 				if (timeout < 0L)
 					timeout = 0;
 				SwaggerAsyncResponse futureresponse = map.get(system).get(timeout, TimeUnit.MILLISECONDS);
-				ListStatus ls = new ListStatus();
-				ls.system = system;
-				r.status.add(ls);
-				SwaggerException ex = futureresponse.getException();
-				if (ex != null) {
-					log.error("Erro obtendo a usuário de {}", system, ex);
-					ls.errormsg = SwaggerUtils.messageAsString(ex);
-					ls.stacktrace = SwaggerUtils.stackAsString(ex);
-				}
+				// SwaggerException ex = futureresponse.getException();
+				// if (ex != null) {
+				// log.error("Erro acessando " + system, ex);
+				// ls.errormsg = SwaggerUtils.messageAsString(ex);
+				// ls.stacktrace = SwaggerUtils.stackAsString(ex);
+				// }
 				ISwaggerResponse o = futureresponse.getRespOrThrowException();
 				if (o != null)
 					r.responses.put(system, o);
+				SwaggerCallStatus ls = new SwaggerCallStatus();
+				ls.system = system;
+				r.status.add(ls);
 			} catch (Exception ex) {
-				ListStatus ls = new ListStatus();
+				log.error("Erro acessando " + system, ex);
+				SwaggerCallStatus ls = new SwaggerCallStatus();
 				ls.system = system;
 				ls.errormsg = SwaggerUtils.messageAsString(ex);
 				if (ls.errormsg == null)

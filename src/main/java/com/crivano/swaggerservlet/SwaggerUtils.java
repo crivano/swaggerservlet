@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -156,12 +157,12 @@ public class SwaggerUtils {
 	}
 
 	public static SwaggerError writeJsonError(int status, HttpServletRequest request, HttpServletResponse response,
-			final Exception e, ISwaggerRequest req, ISwaggerResponse resp, String context, String service,
-			String user) {
+			final Exception e, ISwaggerRequest req, ISwaggerResponse resp, String context, String service, String user,
+			List<SwaggerCallStatus> errorstatus) {
 		SwaggerError error = new SwaggerError();
 
 		try {
-			buildSwaggerError(request, e, context, service, user, error);
+			buildSwaggerError(request, e, context, service, user, error, errorstatus);
 			response.setStatus(status);
 			writeJsonResp(response, error, context, service);
 			return error;
@@ -171,7 +172,7 @@ public class SwaggerUtils {
 	}
 
 	public static void buildSwaggerError(HttpServletRequest request, final Exception e, String context, String service,
-			String user, SwaggerError error) {
+			String user, SwaggerError error, List<SwaggerCallStatus> errorstatus) {
 		String errmsg = messageAsString(e);
 		String errstack = stackAsString(e);
 		boolean errpresentable = e instanceof IPresentableException;
@@ -205,6 +206,8 @@ public class SwaggerUtils {
 		detail.user = user;
 		detail.url = request.getRequestURI();
 		error.errordetails.add(detail);
+
+		error.errorstatus = errorstatus;
 	}
 
 	public static String messageAsString(final Exception e) {
@@ -212,7 +215,7 @@ public class SwaggerUtils {
 		if (errmsg == null)
 			if (e instanceof NullPointerException)
 				errmsg = "null pointer.";
-			else 
+			else
 				errmsg = e.getClass().getSimpleName();
 		return errmsg;
 	}
