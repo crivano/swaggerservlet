@@ -27,10 +27,13 @@ public class SwaggerAsyncRequest<T extends ISwaggerResponse> implements Callable
 					this.req, this.respClass));
 		} catch (Exception ex) {
 			SwaggerAsyncResponse<T> ar = new SwaggerAsyncResponse<T>(null);
-			String errmsg = SwaggerUtils.messageAsString(ex);
-			String errstack = SwaggerUtils.stackAsString(ex);
-			int status = (ex instanceof SwaggerException) ? ((SwaggerException) ex).getStatus() : 500;
-			ar.setException(new SwaggerException(errmsg, status, ex, req, null, context));
+			if (ex instanceof SwaggerException) {
+				ar.setException((SwaggerException) ex);
+			} else {
+				String errmsg = SwaggerUtils.messageAsString(ex);
+				String errstack = SwaggerUtils.stackAsString(ex);
+				ar.setException(new SwaggerException(errmsg, 500, ex, req, null, context));
+			}
 			return ar;
 		}
 	}

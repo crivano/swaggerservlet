@@ -139,7 +139,17 @@ public class SwaggerCall {
 				ls.system = system;
 				r.status.add(ls);
 			} catch (Exception ex) {
-				log.error("Erro acessando " + system, ex);
+				boolean logged = true;
+				if (ex instanceof SwaggerException) {
+					SwaggerException se = (SwaggerException) ex;
+					if (se.resp instanceof SwaggerError) {
+						SwaggerError err = (SwaggerError) se.resp;
+						if (err.errordetails != null && err.errordetails.size() > 0)
+							logged = err.errordetails.get(0).logged;
+					}
+				}
+				if (logged)
+					log.error("Erro acessando " + system, ex);
 				SwaggerCallStatus ls = new SwaggerCallStatus();
 				ls.system = system;
 				ls.errormsg = SwaggerUtils.messageAsString(ex);

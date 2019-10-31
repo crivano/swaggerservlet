@@ -201,7 +201,7 @@ public class SwaggerUtils {
 		detail.service = service;
 		detail.stacktrace = errstack;
 		detail.presentable = errpresentable;
-		detail.logged = true;
+		detail.logged = e == null || !(e instanceof IUnloggedException);
 		// if (request.getRequestURI() != null)
 		detail.user = user;
 		detail.url = request.getRequestURI();
