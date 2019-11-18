@@ -204,7 +204,8 @@ public class SwaggerUtils {
 		detail.logged = e == null || !(e instanceof IUnloggedException);
 		// if (request.getRequestURI() != null)
 		detail.user = user;
-		detail.url = request.getRequestURI();
+		if (request != null)
+			detail.url = request.getRequestURI();
 		error.errordetails.add(detail);
 
 		error.errorstatus = errorstatus;
