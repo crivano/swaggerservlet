@@ -1,11 +1,12 @@
 # SwaggerServlet
-A very simple framework tha validates REST requests with Swagger and routes them to Pojo classes
+A very simple framework that validates REST requests with Swagger and routes them to Pojo classes
 
-SwaggerServlet also provides two useful features:
+SwaggerServlet also provides useful features:
 - A monitoring URL like ```/api/v1/test``` that tests the webservice and it's dependecies;
 - A documentation URL like ```/api/v1/swagger-ui``` that opens swagger-ui showing your API;
+- Declared (and validated) environment parameters.
 
-### Downloading directly or using it through Maven
+### Using it through Maven
 
 For a quick start, you can use this snippet in your maven POM:
 
@@ -13,7 +14,7 @@ For a quick start, you can use this snippet in your maven POM:
 <dependency>
     <groupId>com.crivano</groupId>
     <artifactId>swaggerservlet</artifactId>
-    <version>1.15.0</version>
+    <version>1.25.0</version>
 </dependency>
 ```
 
