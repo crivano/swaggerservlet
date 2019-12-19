@@ -161,7 +161,7 @@ public class Test {
 			try {
 				if (tr.pass == null || tr.pass == false)
 					response.setStatus(503);
-				SwaggerServlet.corsHeaders(response);
+				SwaggerServlet.corsHeaders(request, response);
 				SwaggerUtils.writeJsonResp(response, tr, "test", ss.getService());
 			} catch (JSONException e) {
 				throw new RuntimeException("error reporting test results", e);

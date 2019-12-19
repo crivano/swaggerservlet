@@ -14,6 +14,7 @@ import java.util.TreeMap;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -81,22 +82,7 @@ public class SwaggerServlet extends HttpServlet {
 	protected void initialize(ServletConfig config) throws ServletException {
 	}
 
-	private static class Prepared {
-		String actionName;
-		ISwaggerMethod action;
-		String context;
-		String service;
-		boolean cacheable;
-		Swagger.Path matchingPath;
-		Class<? extends ISwaggerRequest> clazzRequest;
-		Class<? extends ISwaggerResponse> clazzResponse;
-		ISwaggerRequest req;
-		ISwaggerResponse resp;
-		HttpServletRequest request;
-		HttpServletResponse response;
-	}
-
-	private static ThreadLocal<Prepared> current = new ThreadLocal<Prepared>();
+	private static ThreadLocal<SwaggerContext> current = new ThreadLocal<SwaggerContext>();
 
 	private static Map<String, String> redefinedProperties = new HashMap<>();
 
@@ -133,11 +119,11 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	public static HttpServletRequest getHttpServletRequest() {
-		return current.get().request;
+		return current.get().getRequest();
 	}
 
 	public static HttpServletResponse getHttpServletResponse() {
-		return current.get().response;
+		return current.get().getResponse();
 	}
 
 	public Map<String, String> getManifestEntries() {
@@ -152,30 +138,30 @@ public class SwaggerServlet extends HttpServlet {
 
 	public void prepare(String requestMethod, String requestPathInfo) throws ClassNotFoundException,
 			NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-		Prepared p = new Prepared();
+		SwaggerContext p = new SwaggerContext();
 		current.set(null);
 
 		String method = requestMethod.toLowerCase();
 
-		p.matchingPath = swagger.checkRequestPath(requestPathInfo, method);
+		p.setMatchingPath(swagger.checkRequestPath(requestPathInfo, method));
 
-		p.actionName = toCamelCase(p.matchingPath.swaggerPath + " " + method);
+		p.setActionName(toCamelCase(p.getMatchingPath().swaggerPath + " " + method));
 
-		Class<?> clazz = Class.forName(actionpackage + "." + p.actionName);
+		Class<?> clazz = Class.forName(actionpackage + "." + p.getActionName());
 		Constructor<?> ctor = clazz.getConstructor();
-		p.action = (ISwaggerMethod) ctor.newInstance();
+		p.setAction((ISwaggerMethod) ctor.newInstance());
 
-		p.context = p.action.getContext();
-		p.service = getService();
-		p.cacheable = p.action instanceof ISwaggerCacheableMethod;
+		p.setContext(p.getAction().getContext());
+		p.setService(getService());
+		p.setCacheable(p.getAction() instanceof ISwaggerCacheableMethod);
 
-		p.clazzRequest = (Class<? extends ISwaggerRequest>) Class.forName(
-				swagger.getInterfacePackage() + "." + swagger.getInterfaceName() + "$" + p.actionName + "Request");
+		p.setClazzRequest((Class<? extends ISwaggerRequest>) Class.forName(swagger.getInterfacePackage() + "."
+				+ swagger.getInterfaceName() + "$" + p.getActionName() + "Request"));
 
-		p.clazzResponse = (Class<? extends ISwaggerResponse>) Class.forName(
-				swagger.getInterfacePackage() + "." + swagger.getInterfaceName() + "$" + p.actionName + "Response");
-		p.req = p.clazzRequest.newInstance();
-		p.resp = p.clazzResponse.newInstance();
+		p.setClazzResponse((Class<? extends ISwaggerResponse>) Class.forName(swagger.getInterfacePackage() + "."
+				+ swagger.getInterfaceName() + "$" + p.getActionName() + "Response"));
+		p.setReq(p.getClazzRequest().newInstance());
+		p.setResp(p.getClazzResponse().newInstance());
 
 		current.set(p);
 	}
@@ -194,18 +180,18 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	protected static String getContext() {
-		Prepared prepared = current.get();
+		SwaggerContext prepared = current.get();
 		if (prepared == null)
 			return null;
-		String context = prepared.context;
+		String context = prepared.getContext();
 		return context;
 	}
 
 	protected static boolean isCacheable() {
-		Prepared prepared = current.get();
+		SwaggerContext prepared = current.get();
 		if (prepared == null)
 			return false;
-		Boolean cacheable = prepared.cacheable;
+		Boolean cacheable = prepared.isCacheable();
 		return cacheable;
 	}
 
@@ -300,15 +286,15 @@ public class SwaggerServlet extends HttpServlet {
 
 		try {
 			prepare(request, response);
-			Prepared prepared = current.get();
-			prepared.request = request;
-			prepared.response = response;
-			req = prepared.req;
-			resp = prepared.resp;
+			SwaggerContext prepared = current.get();
+			prepared.setRequest(request);
+			prepared.setResponse(response);
+			req = prepared.getReq();
+			resp = prepared.getResp();
 
 			req = injectVariables(request, req);
 
-			corsHeaders(response);
+			corsHeaders(request, response);
 
 			if (isCacheable()) {
 				// String cache = RestUtils.cacheRetrieveJson(getContext(),
@@ -320,8 +306,8 @@ public class SwaggerServlet extends HttpServlet {
 				// }
 			}
 
-			if (!ISwaggerPublicMethod.class.isAssignableFrom(prepared.action.getClass()) && getAuthorization() != null
-					&& !getAuthorization().equals(getAuthorizationFromHeader(request)))
+			if (!ISwaggerPublicMethod.class.isAssignableFrom(prepared.getAction().getClass())
+					&& getAuthorization() != null && !getAuthorization().equals(getAuthorizationFromHeader(request)))
 				throw new Exception("Unauthorized.");
 
 			run(req, resp);
@@ -408,7 +394,7 @@ public class SwaggerServlet extends HttpServlet {
 		lr.response = resp;
 		log.debug("HTTP-OK: " + SwaggerUtils.toJson(lr));
 
-		SwaggerUtils.writeJsonResp(response, resp, getContext(), current.get().service);
+		SwaggerUtils.writeJsonResp(response, resp, getContext(), current.get().getService());
 		response.getWriter().close();
 	}
 
@@ -441,15 +427,16 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	public ISwaggerRequest injectVariables(HttpServletRequest request, ISwaggerRequest req) throws Exception {
-		Prepared prepared = current.get();
+		SwaggerContext prepared = current.get();
 
 		// Inject JSON body parameters
 		try {
 			if (request.getContentType() != null && request.getContentType().startsWith("application/json")) {
-				ISwaggerRequest reqFromJson = SwaggerUtils.getJsonReq(request, getContext(), prepared.clazzRequest);
+				ISwaggerRequest reqFromJson = SwaggerUtils.getJsonReq(request, getContext(),
+						prepared.getClazzRequest());
 				if (reqFromJson != null) {
 					req = reqFromJson;
-					prepared.req = req;
+					prepared.setReq(req);
 				}
 			}
 		} catch (Exception e) {
@@ -472,7 +459,7 @@ public class SwaggerServlet extends HttpServlet {
 				Swagger.set(req, (String) key, request.getParameter((String) key));
 
 		// Inject path parameters
-		swagger.injectPathVariables(req, prepared.matchingPath);
+		swagger.injectPathVariables(req, prepared.getMatchingPath());
 		return req;
 	}
 
@@ -484,16 +471,20 @@ public class SwaggerServlet extends HttpServlet {
 	@Override
 	public void doOptions(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		corsHeaders(response);
+		corsHeaders(request, response);
 		response.setStatus(200);
 		response.getWriter().write("OK");
 		response.getWriter().close();
 	}
 
-	public static void corsHeaders(HttpServletResponse response) {
-		response.addHeader("Access-Control-Allow-Origin", "*");
+	public static void corsHeaders(HttpServletRequest request, HttpServletResponse response) {
+		String origin = request.getHeader("Origin");
+		if (origin == null)
+			origin = "*";
+		response.addHeader("Access-Control-Allow-Origin", origin);
 		response.addHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS");
 		response.addHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+		response.addHeader("Access-Control-Allow-Credentials", "true");
 	}
 
 	public String getAuthorization() {
@@ -513,11 +504,11 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	public void run(ISwaggerRequest req, ISwaggerResponse resp) throws Exception {
-		Prepared prepared = current.get();
-		Class<? extends ISwaggerMethod> clazzAction = prepared.action.getClass();
+		SwaggerContext prepared = current.get();
+		prepared.setReq(req);
+		prepared.setResp(resp);
 		try {
-			clazzAction.getMethod("run", prepared.clazzRequest, prepared.clazzResponse).invoke(prepared.action, req,
-					resp);
+			invoke(prepared);
 		} catch (InvocationTargetException ex) {
 			Exception exc = ex;
 			if (exc.getCause() != null && exc.getCause() instanceof Exception)
@@ -526,6 +517,12 @@ public class SwaggerServlet extends HttpServlet {
 				exc = (Exception) exc.getCause();
 			throw exc;
 		}
+	}
+
+	public void invoke(SwaggerContext prepared) throws Exception {
+		Class<? extends ISwaggerMethod> clazzAction = prepared.getAction().getClass();
+		clazzAction.getMethod("run", prepared.getClazzRequest(), prepared.getClazzResponse())
+				.invoke(prepared.getAction(), prepared.getReq(), prepared.getResp());
 	}
 
 	public void setAPI(Class clazzInterface) {
