@@ -47,6 +47,8 @@ public class DefaultHTTP implements IHTTP {
 						continue;
 					if (v instanceof Date)
 						v = SwaggerUtils.format((Date) v);
+					if (v instanceof byte[])
+						v = SwaggerUtils.base64Encode((byte[]) v);
 					sb.append(first ? "" : "&");
 					first = false;
 					sb.append(URLEncoder.encode(f.getName()));

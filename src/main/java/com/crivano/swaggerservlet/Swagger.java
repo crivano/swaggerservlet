@@ -441,6 +441,8 @@ public class Swagger {
 			v = new Boolean(value);
 		if (field.getType() == Date.class)
 			v = SwaggerUtils.parse(value);
+		if (field.getType().isAssignableFrom(byte[].class))
+			v = SwaggerUtils.base64Decode(value);
 		field.setAccessible(true);
 		field.set(model, v);
 	}
