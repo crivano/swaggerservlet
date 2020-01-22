@@ -26,7 +26,7 @@ import com.crivano.swaggerservlet.dependency.IDependency;
 import com.crivano.swaggerservlet.test.Test;
 
 public class SwaggerServlet extends HttpServlet {
-	private static final String SWAGGERSERVLET_PROPERTIES_SECRET_PROPERTY_NAME = "swaggerservlet.properties.secret";
+	private static final String SWAGGERSERVLET_PROPERTIES_SECRET_NAME = "swaggerservlet.properties.secret";
 
 	private static final Logger log = LoggerFactory.getLogger(SwaggerServlet.class);
 
@@ -53,8 +53,11 @@ public class SwaggerServlet extends HttpServlet {
 
 		addRestrictedProperty(SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME,
 				SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_DEFAULT_VALUE);
-		addPrivateProperty(SWAGGERSERVLET_PROPERTIES_SECRET_PROPERTY_NAME, null);
-		setAuthorizationToProperties(getProperty(SWAGGERSERVLET_PROPERTIES_SECRET_PROPERTY_NAME));
+		addRestrictedProperty(DefaultHTTP.SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME,
+				DefaultHTTP.SWAGGERSERVLET_CALL_CONTENT_TYPE_VALUE);
+		addPrivateProperty(SWAGGERSERVLET_PROPERTIES_SECRET_NAME, null);
+		
+		setAuthorizationToProperties(getProperty(SWAGGERSERVLET_PROPERTIES_SECRET_NAME));
 
 		try (InputStream is = config.getServletContext().getResourceAsStream("/META-INF/MANIFEST.MF")) {
 			String m = SwaggerUtils.convertStreamToString(is);
@@ -444,6 +447,7 @@ public class SwaggerServlet extends HttpServlet {
 		}
 
 		// Inject form parameters
+		System.out.println(request.getParameter("cpf"));
 		Enumeration paramNames = request.getParameterNames();
 		while (paramNames != null && paramNames.hasMoreElements()) {
 			String paramName = (String) paramNames.nextElement();

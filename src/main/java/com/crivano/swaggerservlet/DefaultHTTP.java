@@ -13,6 +13,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DefaultHTTP implements IHTTP {
+	public static final String SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME = "swaggerservlet.call.content.type";
+	public static final String SWAGGERSERVLET_CALL_CONTENT_TYPE_VALUE = "application/json";
+
 	public static String convertStreamToString(java.io.InputStream is) {
 		@SuppressWarnings("resource")
 		java.util.Scanner s = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A");
@@ -34,7 +37,7 @@ public class DefaultHTTP implements IHTTP {
 		String body = null;
 
 		if (req != null && ("POST".equals(method) || "PUT".equals(method))) {
-			if (false) {
+			if ("application/json".equals(SwaggerServlet.getProperty(SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME))) {
 				body = SwaggerUtils.toJson(req);
 				con.setRequestProperty("Content-Type", "application/json");
 			} else {

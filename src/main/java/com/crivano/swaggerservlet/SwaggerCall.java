@@ -113,7 +113,7 @@ public class SwaggerCall {
 		Map<String, Future<SwaggerAsyncResponse<ISwaggerResponse>>> map = new HashMap<>();
 		final CountDownLatch responseWaiter = new CountDownLatch(mapp.size());
 
-		Date dt1 = new Date();
+		long dt1 = System.currentTimeMillis();
 
 		for (String system : mapp.keySet()) {
 			SwaggerCallParameters scp = mapp.get(system);
@@ -121,8 +121,12 @@ public class SwaggerCall {
 		}
 
 		for (String system : mapp.keySet()) {
+			SwaggerCallStatus ls = new SwaggerCallStatus();
+			ls.system = system;
+			r.status.add(ls);
+			long time = System.currentTimeMillis();
 			try {
-				long timeout = timeoutMilliseconds - ((new Date()).getTime() - dt1.getTime());
+				long timeout = timeoutMilliseconds - (time - dt1);
 				if (timeout < 0L)
 					timeout = 0;
 				SwaggerAsyncResponse futureresponse = map.get(system).get(timeout, TimeUnit.MILLISECONDS);
@@ -132,12 +136,10 @@ public class SwaggerCall {
 				// ls.errormsg = SwaggerUtils.messageAsString(ex);
 				// ls.stacktrace = SwaggerUtils.stackAsString(ex);
 				// }
+				ls.miliseconds = futureresponse.getMiliseconds();
 				ISwaggerResponse o = futureresponse.getRespOrThrowException();
 				if (o != null)
 					r.responses.put(system, o);
-				SwaggerCallStatus ls = new SwaggerCallStatus();
-				ls.system = system;
-				r.status.add(ls);
 			} catch (Exception ex) {
 				boolean logged = true;
 				if (ex instanceof SwaggerException) {
@@ -150,13 +152,12 @@ public class SwaggerCall {
 				}
 				if (logged)
 					log.error("Erro acessando " + system, ex);
-				SwaggerCallStatus ls = new SwaggerCallStatus();
-				ls.system = system;
 				ls.errormsg = SwaggerUtils.messageAsString(ex);
 				if (ls.errormsg == null)
 					ls.errormsg = ex.getClass().getName();
 				ls.stacktrace = SwaggerUtils.stackAsString(ex);
-				r.status.add(ls);
+				if (ls.miliseconds == null)
+					ls.miliseconds = System.currentTimeMillis() - time;
 				if (ex instanceof TimeoutException)
 					map.get(system).cancel(true);
 			}

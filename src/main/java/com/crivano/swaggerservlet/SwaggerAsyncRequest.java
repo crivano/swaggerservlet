@@ -22,11 +22,15 @@ public class SwaggerAsyncRequest<T extends ISwaggerResponse> implements Callable
 
 	@Override
 	public SwaggerAsyncResponse<T> call() throws Exception {
+		long time = System.currentTimeMillis();
 		try {
-			return new SwaggerAsyncResponse(SwaggerCall.call(this.context, this.authorization, this.method, this.url,
+			SwaggerAsyncResponse<T> ar = new SwaggerAsyncResponse(SwaggerCall.call(this.context, this.authorization, this.method, this.url,
 					this.req, this.respClass));
+			ar.setMiliseconds(System.currentTimeMillis() - time);
+			return ar;
 		} catch (Exception ex) {
 			SwaggerAsyncResponse<T> ar = new SwaggerAsyncResponse<T>(null);
+			ar.setMiliseconds(System.currentTimeMillis() - time);
 			if (ex instanceof SwaggerException) {
 				ar.setException((SwaggerException) ex);
 			} else {

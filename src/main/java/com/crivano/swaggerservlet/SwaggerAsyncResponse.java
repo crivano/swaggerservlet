@@ -3,6 +3,7 @@ package com.crivano.swaggerservlet;
 public class SwaggerAsyncResponse<T extends ISwaggerResponse> {
 	private T resp;
 	private SwaggerException exception;
+	private Long miliseconds;
 
 	public SwaggerAsyncResponse(T resp) {
 		this.resp = resp;
@@ -24,6 +25,14 @@ public class SwaggerAsyncResponse<T extends ISwaggerResponse> {
 
 	public void setException(SwaggerException exception) {
 		this.exception = exception;
+	}
+
+	public Long getMiliseconds() {
+		return miliseconds;
+	}
+
+	public void setMiliseconds(Long miliseconds) {
+		this.miliseconds = miliseconds;
 	}
 
 }
