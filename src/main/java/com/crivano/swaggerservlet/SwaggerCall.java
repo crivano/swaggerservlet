@@ -150,6 +150,8 @@ public class SwaggerCall {
 							logged = err.errordetails.get(0).logged;
 					}
 				}
+				if (!(ex instanceof IUnloggedException))
+					logged = false;
 				if (logged)
 					log.error("Erro acessando " + system, ex);
 				ls.errormsg = SwaggerUtils.messageAsString(ex);

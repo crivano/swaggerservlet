@@ -3,7 +3,7 @@ package com.crivano.swaggerservlet;
 import java.util.List;
 
 @SuppressWarnings("serial")
-public class SwaggerAuthorizationException extends SwaggerDetailedException {
+public class SwaggerAuthorizationException extends SwaggerDetailedException implements IUnloggedException {
 
 	public SwaggerAuthorizationException(String string) {
 		super(string);
