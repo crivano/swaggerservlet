@@ -226,12 +226,35 @@ public class SwaggerUtils {
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
 		String errstack = sw.toString(); // stack trace as a string
-		// if (errstack != null) {
-		// String split[] = errstack
-		// .split("\r?\n?\tat com.crivano.swaggerservlet");
-		// errstack = split[0] + (split.length > 2 ? "\r\n" + split[1] : "");
-		// }
 		return errstack;
+	}
+
+	public static String simplifyStackTrace(Throwable t, String[] pkgs) {
+		if (t == null)
+			return null;
+		java.io.StringWriter sw = new java.io.StringWriter();
+		java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+		t.printStackTrace(pw);
+		String s = sw.toString();
+		if (true) {
+			StringBuilder sb = new StringBuilder();
+			String[] lines = s.split(System.getProperty("line.separator"));
+			for (int i = 0; i < lines.length; i++) {
+				String l = lines[i];
+				boolean isInPackages = false;
+				if (pkgs != null) {
+					for (String pkg : pkgs) {
+						isInPackages |= l.contains(pkg);
+					}
+				}
+				if (!l.startsWith("\t") || (isInPackages && !l.contains(".invoke(") && !l.contains(".doFilter("))) {
+					sb.append(l);
+					sb.append(System.getProperty("line.separator"));
+				}
+			}
+			s = sb.toString();
+		}
+		return s;
 	}
 
 	public static String format(Date date) {
@@ -309,5 +332,4 @@ public class SwaggerUtils {
 			mapLogger.put(clazz, LoggerFactory.getLogger(clazz));
 		return mapLogger.get(clazz);
 	}
-
 }

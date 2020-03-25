@@ -56,7 +56,7 @@ public class SwaggerServlet extends HttpServlet {
 		addRestrictedProperty(DefaultHTTP.SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME,
 				DefaultHTTP.SWAGGERSERVLET_CALL_CONTENT_TYPE_VALUE);
 		addPrivateProperty(SWAGGERSERVLET_PROPERTIES_SECRET_NAME, null);
-		
+
 		setAuthorizationToProperties(getProperty(SWAGGERSERVLET_PROPERTIES_SECRET_NAME));
 
 		try (InputStream is = config.getServletContext().getResourceAsStream("/META-INF/MANIFEST.MF")) {
@@ -338,7 +338,7 @@ public class SwaggerServlet extends HttpServlet {
 					lr.request = req;
 					lr.response = error;
 					String details = SwaggerUtils.toJson(lr);
-					log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
+					log.error("HTTP-ERROR: {}, EXCEPTION {}", details, SwaggerUtils.simplifyStackTrace(e, new String[] {this.actionpackage}));
 				}
 			} catch (Exception e2) {
 				if (e.getMessage() != null && e.getMessage().contains("Connection reset"))
