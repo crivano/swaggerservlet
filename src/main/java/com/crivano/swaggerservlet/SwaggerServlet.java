@@ -447,7 +447,6 @@ public class SwaggerServlet extends HttpServlet {
 		}
 
 		// Inject form parameters
-		System.out.println(request.getParameter("cpf"));
 		Enumeration paramNames = request.getParameterNames();
 		while (paramNames != null && paramNames.hasMoreElements()) {
 			String paramName = (String) paramNames.nextElement();
