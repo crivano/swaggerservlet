@@ -38,10 +38,22 @@ public class SwaggerUtils {
 
 	private static IMemCache memcache = new DefaultMemCache();
 
+	private static IUploadHandler uploadHandler = null;
+
 	private static Map<Class, Logger> mapLogger = new HashMap<>();
 
 	public static void setCache(IMemCache memcache) {
 		SwaggerUtils.memcache = memcache;
+	}
+
+	public static void setUploadHandler(IUploadHandler streamHandler) {
+		SwaggerUtils.uploadHandler = streamHandler;
+	}
+
+	public static Object upload(String fileName, String contentType, InputStream stream) {
+		if (uploadHandler == null)
+			throw new RuntimeException("no stream handler defined");
+		return uploadHandler.upload(fileName, contentType, stream);
 	}
 
 	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";

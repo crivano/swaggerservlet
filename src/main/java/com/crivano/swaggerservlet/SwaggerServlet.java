@@ -14,11 +14,14 @@ import java.util.TreeMap;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.fileupload.FileItemIterator;
+import org.apache.commons.fileupload.FileItemStream;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.fileupload.util.Streams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,10 +48,13 @@ public class SwaggerServlet extends HttpServlet {
 
 	public static String servletContext = null;
 
+	public SwaggerServlet() {
+		instance = this;
+	}
+
 	@Override
 	public final void init(ServletConfig config) throws ServletException {
 		super.init(config);
-		instance = this;
 		servletContext = config.getServletContext().getContextPath().replace("/", "");
 
 		addRestrictedProperty(SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME,
@@ -338,7 +344,8 @@ public class SwaggerServlet extends HttpServlet {
 					lr.request = req;
 					lr.response = error;
 					String details = SwaggerUtils.toJson(lr);
-					log.error("HTTP-ERROR: {}, EXCEPTION {}", details, SwaggerUtils.simplifyStackTrace(e, new String[] {this.actionpackage}));
+					log.error("HTTP-ERROR: {}, EXCEPTION {}", details,
+							SwaggerUtils.simplifyStackTrace(e, new String[] { this.actionpackage }));
 				}
 			} catch (Exception e2) {
 				if (e.getMessage() != null && e.getMessage().contains("Connection reset"))
@@ -431,6 +438,44 @@ public class SwaggerServlet extends HttpServlet {
 
 	public ISwaggerRequest injectVariables(HttpServletRequest request, ISwaggerRequest req) throws Exception {
 		SwaggerContext prepared = current.get();
+
+		// Inject file parameters
+		if (req instanceof ISwaggerRequestFile && ServletFileUpload.isMultipartContent(request)) {
+			ISwaggerRequestFile reqFile = (ISwaggerRequestFile) req;
+			// Create a new file upload handler
+			ServletFileUpload upload = new ServletFileUpload();
+
+			// Parse the request
+			FileItemIterator iter = upload.getItemIterator(request);
+			while (iter.hasNext()) {
+				FileItemStream item = iter.next();
+				String name = item.getFieldName();
+				InputStream stream = item.openStream();
+				if (item.isFormField()) {
+					String value = Streams.asString(stream);
+					System.out.println("Form field " + name + " with value " + value + " detected.");
+					if (!swagger.has(req, name))
+						swagger.set(req, name, value);
+				} else {
+					System.out.println("File field " + name + " with file name " + item.getName() + " detected.");
+					reqFile.setContenttype(item.getContentType());
+					reqFile.setFilename(item.getName());
+					reqFile.setContent(SwaggerUtils.upload(item.getName(), item.getContentType(), stream));
+
+					Enumeration<String> headerNames = request.getHeaderNames();
+					if (headerNames != null) {
+						Map<String, List<String>> headerFields = new HashMap<>();
+						while (headerNames.hasMoreElements()) {
+							String headerName = headerNames.nextElement();
+							if (headerFields.get(headerName) == null)
+								headerFields.put(headerName, new ArrayList<String>());
+							headerFields.get(headerName).add(request.getHeader(headerName));
+						}
+						reqFile.setHeaderFields(headerFields);
+					}
+				}
+			}
+		}
 
 		// Inject JSON body parameters
 		try {
@@ -548,6 +593,8 @@ public class SwaggerServlet extends HttpServlet {
 	public static String propertyName(String name) {
 		if (servletContext == null)
 			return name;
+		else if (name.startsWith("/"))
+			return name.substring(1);
 		else
 			return servletContext + "." + name;
 	}
