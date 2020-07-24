@@ -70,10 +70,10 @@ public class Test {
 
 		for (Property p : properties) {
 			if (p.getScope() == Scope.PUBLIC)
-				tr.addProperty(p.getName());
+				tr.addProperty(p.getName(), ss.getDefinedProperty(p.getName()));
 			else if (p.getScope() == Scope.RESTRICTED) {
 				if (auth)
-					tr.addProperty(p.getName());
+					tr.addProperty(p.getName(), ss.getDefinedProperty(p.getName()));
 				else
 					tr.addPrivateProperty(p.getName());
 			} else if (p.getScope() == Scope.PRIVATE)

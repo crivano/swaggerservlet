@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import com.crivano.swaggerservlet.Property;
 import com.crivano.swaggerservlet.SwaggerError;
-import com.crivano.swaggerservlet.SwaggerServlet;
 
 public class TestResponse extends SwaggerError {
 	String category;
@@ -41,10 +41,14 @@ public class TestResponse extends SwaggerError {
 		dependencies.add(tr);
 	}
 
-	public void addProperty(String name) {
+	public void addProperty(String name, Property property) {
 		if (properties == null)
 			properties = new TreeMap<>();
-		properties.put(name, System.getProperty(name, "[undefined]"));
+		properties.put(name,
+				System.getProperty(name,
+						property != null && property.isOptional()
+								? "[default: " + property.getDefaultValue() + "]"
+								: "[undefined]"));
 	}
 
 	public void addPrivateProperty(String name) {
