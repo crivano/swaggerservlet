@@ -591,7 +591,7 @@ public class SwaggerServlet extends HttpServlet {
 	}
 
 	public static String propertyName(String name) {
-		if (servletContext == null)
+		if (servletContext == null || servletContext.length() == 0)
 			return name;
 		else if (name.startsWith("/"))
 			return name.substring(1);
