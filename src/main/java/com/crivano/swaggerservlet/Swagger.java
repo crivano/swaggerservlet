@@ -140,6 +140,12 @@ public class Swagger {
 		}
 	}
 
+	public void injectQueryStringParameters(ISwaggerRequest req, Map<String, String[]> map) throws Exception {
+		for (Object key : map.keySet())
+			if (map.get(key).length == 1 && !Swagger.has(req, (String) key))
+				set(req, (String) key, map.get(key)[0]);
+	}
+
 	private void checkParams(Map<String, Object> func, ISwaggerRequest req) throws Exception {
 		List<Map<String, Object>> parameters = (List<Map<String, Object>>) func.get("parameters");
 		if (parameters == null)

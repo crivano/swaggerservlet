@@ -35,7 +35,7 @@ public class SwaggerServlet extends HttpServlet {
 
 	private static final long serialVersionUID = 4436503480265700847L;
 
-	static SwaggerServlet instance = null;
+	protected static SwaggerServlet instance = null;
 
 	private Swagger swagger = null;
 	private String actionpackage = null;
@@ -49,7 +49,8 @@ public class SwaggerServlet extends HttpServlet {
 	public static String servletContext = null;
 
 	public SwaggerServlet() {
-		instance = this;
+		if (instance == null)
+			instance = this;
 	}
 
 	@Override
@@ -501,10 +502,7 @@ public class SwaggerServlet extends HttpServlet {
 		}
 
 		// Inject querystring parameters
-		for (Object key : request.getParameterMap().keySet())
-			if (key instanceof String && request.getParameter((String) key) instanceof String
-					&& !Swagger.has(req, (String) key))
-				Swagger.set(req, (String) key, request.getParameter((String) key));
+		swagger.injectQueryStringParameters(req, request.getParameterMap());
 
 		// Inject path parameters
 		swagger.injectPathVariables(req, prepared.getMatchingPath());
@@ -628,6 +626,41 @@ public class SwaggerServlet extends HttpServlet {
 			if (p.getName().startsWith(servletContext + "."))
 				getProperty(p.getName().substring(servletContext.length() + 1));
 		}
+	}
+
+	public ISwaggerResponse execute(String requestMethod, String requestPathInfo, ISwaggerRequest reqOverride,
+			HttpServletRequest request, Map<String, String[]> params) throws Exception {
+		prepare(requestMethod, requestPathInfo);
+		SwaggerContext prepared = current.get();
+		if (reqOverride != null)
+			prepared.setReq(reqOverride);
+		if (request != null)
+			prepared.setRequest(request);
+//		prepared.setResponse(response);
+		ISwaggerRequest req = prepared.getReq();
+		ISwaggerResponse resp = prepared.getResp();
+
+		if (request != null)
+			req = injectVariables(request, req);
+
+		if (params != null)
+			swagger.injectQueryStringParameters(req, params);
+		swagger.injectPathVariables(req, prepared.getMatchingPath());
+
+		run(req, resp);
+
+		return resp;
+	}
+
+	public ISwaggerResponse execute(String requestMethod, String requestPathInfo, Map<String, String> params)
+			throws Exception {
+		Map<String, String[]> map = new HashMap<>();
+
+		if (params != null)
+			for (String key : params.keySet()) {
+				map.put(key, new String[] { params.get(key) });
+			}
+		return execute(requestMethod, requestPathInfo, null, null, map);
 	}
 
 }
