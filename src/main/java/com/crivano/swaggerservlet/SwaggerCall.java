@@ -18,22 +18,12 @@ import org.slf4j.LoggerFactory;
 import com.crivano.swaggerservlet.test.TestResponse;
 
 public class SwaggerCall {
-	public static final String SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME = "swaggerservlet.threadpool.size";
-	public static final String SWAGGERSERVLET_THREADPOOL_SIZE_DEFAULT_VALUE = "20";
-
 	private static final Logger log = LoggerFactory.getLogger(SwaggerCall.class);
-
-	private static ExecutorService executor = Executors
-			.newFixedThreadPool(new Integer(SwaggerServlet.getProperty(SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME)));
 
 	private static IHTTP http = new DefaultHTTP();
 
 	public static void setHttp(IHTTP http) {
 		SwaggerCall.http = http;
-	}
-
-	public static void setExecutor(ExecutorService executor) {
-		SwaggerCall.executor = executor;
 	}
 
 	public static <T extends ISwaggerResponse> T call(String context, String authorization, String method, String url,
@@ -98,7 +88,8 @@ public class SwaggerCall {
 			String authorization, String method, String url, ISwaggerRequest req, Class<T> clazz) throws Exception {
 		try {
 			// Fire a request.
-			return executor.submit(new SwaggerAsyncRequest(context, authorization, method, url, req, clazz));
+			return SwaggerServlet.executor
+					.submit(new SwaggerAsyncRequest(context, authorization, method, url, req, clazz));
 		} catch (Exception ex) {
 			String errmsg = SwaggerUtils.messageAsString(ex);
 			String errstack = SwaggerUtils.stackAsString(ex);

@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -30,12 +32,16 @@ import com.crivano.swaggerservlet.test.Test;
 
 public class SwaggerServlet extends HttpServlet {
 	private static final String SWAGGERSERVLET_PROPERTIES_SECRET_NAME = "swaggerservlet.properties.secret";
+	public static final String SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME = "swaggerservlet.threadpool.size";
+	public static final String SWAGGERSERVLET_THREADPOOL_SIZE_DEFAULT_VALUE = "20";
+	public static final String SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME = "swaggerservlet.call.content.type";
+	public static final String SWAGGERSERVLET_CALL_CONTENT_TYPE_VALUE = "application/json";
 
 	private static final Logger log = LoggerFactory.getLogger(SwaggerServlet.class);
 
 	private static final long serialVersionUID = 4436503480265700847L;
 
-	protected static SwaggerServlet instance = null;
+//	protected static SwaggerServlet instance = null;
 
 	private Swagger swagger = null;
 	private String actionpackage = null;
@@ -46,22 +52,27 @@ public class SwaggerServlet extends HttpServlet {
 	private String authorization = null;
 	private String authorizationToProperties = null;
 
-	public static String servletContext = null;
+	public String servletContext = null;
+	public static String callContentType;
 
-	public SwaggerServlet() {
-		if (instance == null)
-			instance = this;
-	}
+	static ExecutorService executor = null;
+
+//	public SwaggerServlet() {
+//		if (instance == null)
+//			instance = this;
+//	}
 
 	@Override
 	public final void init(ServletConfig config) throws ServletException {
 		super.init(config);
 		servletContext = config.getServletContext().getContextPath().replace("/", "");
 
-		addRestrictedProperty(SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME,
-				SwaggerCall.SWAGGERSERVLET_THREADPOOL_SIZE_DEFAULT_VALUE);
-		addRestrictedProperty(DefaultHTTP.SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME,
-				DefaultHTTP.SWAGGERSERVLET_CALL_CONTENT_TYPE_VALUE);
+		addRestrictedProperty(SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME,
+				SWAGGERSERVLET_THREADPOOL_SIZE_DEFAULT_VALUE);
+		addRestrictedProperty(SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME, SWAGGERSERVLET_CALL_CONTENT_TYPE_VALUE);
+
+		callContentType = getProperty(SWAGGERSERVLET_CALL_CONTENT_TYPE_NAME);
+
 		addPrivateProperty(SWAGGERSERVLET_PROPERTIES_SECRET_NAME, null);
 
 		setAuthorizationToProperties(getProperty(SWAGGERSERVLET_PROPERTIES_SECRET_NAME));
@@ -82,6 +93,10 @@ public class SwaggerServlet extends HttpServlet {
 
 		initialize(config);
 
+		if (executor == null)
+			executor = Executors
+					.newFixedThreadPool(new Integer(getProperty(SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME)));
+
 		try {
 			assertProperties();
 		} catch (Exception ex) {
@@ -94,9 +109,9 @@ public class SwaggerServlet extends HttpServlet {
 
 	private static ThreadLocal<SwaggerContext> current = new ThreadLocal<SwaggerContext>();
 
-	private static Map<String, String> redefinedProperties = new HashMap<>();
+	private Map<String, String> redefinedProperties = new HashMap<>();
 
-	public static String getProperty(final String propertyName) {
+	public String getProperty(final String propertyName) {
 		String name = propertyName(propertyName);
 		Property dp = getDefinedProperty(name);
 		if (dp == null)
@@ -115,14 +130,12 @@ public class SwaggerServlet extends HttpServlet {
 		throw new RuntimeException("Property '" + name + "' not defined");
 	}
 
-	public static void setProperty(String propertyName, String value) {
+	public void setProperty(String propertyName, String value) {
 		redefinedProperties.put(propertyName, value);
 	}
 
-	public static Property getDefinedProperty(String propertyName) {
-		if (instance == null)
-			return null;
-		for (Property p : instance.properties)
+	public Property getDefinedProperty(String propertyName) {
+		for (Property p : properties)
 			if (p.getName().equals(propertyName))
 				return p;
 		return null;
@@ -580,6 +593,10 @@ public class SwaggerServlet extends HttpServlet {
 		sw.loadFromInputStream(is);
 	}
 
+	public static void setExecutor(ExecutorService executor) {
+		executor = executor;
+	}
+
 	public boolean test() {
 		return true;
 	}
@@ -588,7 +605,7 @@ public class SwaggerServlet extends HttpServlet {
 		dependencies.put(dep.getService(), dep);
 	}
 
-	public static String propertyName(String name) {
+	public String propertyName(String name) {
 		if (servletContext == null || servletContext.length() == 0)
 			return name;
 		else if (name.startsWith("/"))
@@ -663,4 +680,10 @@ public class SwaggerServlet extends HttpServlet {
 		return execute(requestMethod, requestPathInfo, null, null, map);
 	}
 
+	@Override
+	public void destroy() {
+		super.destroy();
+		servletContext = null;
+		redefinedProperties = new HashMap<>();
+	}
 }

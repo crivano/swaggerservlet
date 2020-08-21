@@ -19,6 +19,12 @@ public class ParameterTest extends TestCase {
 		ss.setActionPackage("com.crivano.swaggerservlet");
 	}
 
+	@Override
+	protected void tearDown() throws Exception {
+		super.tearDown();
+		ss.destroy();
+	}
+
 	public ParameterTest(String testName) {
 		super(testName);
 	}

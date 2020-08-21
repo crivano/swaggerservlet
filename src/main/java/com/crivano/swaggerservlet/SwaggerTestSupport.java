@@ -29,7 +29,6 @@ public abstract class SwaggerTestSupport extends TestCase {
 	}
 
 	public void setProperty(String name, String value) {
-		SwaggerServlet.instance = ss;
 		ss.addPublicProperty(name, value);
 	}
 }
