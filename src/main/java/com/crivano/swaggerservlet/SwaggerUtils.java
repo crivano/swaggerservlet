@@ -59,12 +59,12 @@ public class SwaggerUtils {
 	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(ISO_FORMAT);
 
-	public static final Gson gson = new GsonBuilder()
+	public static Gson gson = new GsonBuilder()
 			.registerTypeHierarchyAdapter(InputStream.class, new InputStreamTypeAdapter())
 			.registerTypeHierarchyAdapter(byte[].class, new ByteArrayToBase64TypeAdapter())
 			.registerTypeHierarchyAdapter(Date.class, new DateToStringTypeAdapter()).setPrettyPrinting().create();
 
-	private static class InputStreamTypeAdapter implements JsonSerializer<InputStream>, JsonDeserializer<InputStream> {
+	public static class InputStreamTypeAdapter implements JsonSerializer<InputStream>, JsonDeserializer<InputStream> {
 		public InputStream deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 				throws JsonParseException {
 			return null;
@@ -75,7 +75,7 @@ public class SwaggerUtils {
 		}
 	}
 
-	private static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
+	public static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
 		public byte[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 				throws JsonParseException {
 			return base64Decode(json.getAsString());
@@ -86,7 +86,7 @@ public class SwaggerUtils {
 		}
 	}
 
-	private static class DateToStringTypeAdapter implements JsonSerializer<Date>, JsonDeserializer<Date> {
+	public static class DateToStringTypeAdapter implements JsonSerializer<Date>, JsonDeserializer<Date> {
 		public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 				throws JsonParseException {
 			return parse(json.getAsString());
@@ -109,7 +109,7 @@ public class SwaggerUtils {
 		return Base64Coder.decodeLines(b64);
 	}
 
-	private static String getBody(HttpServletRequest request) throws IOException {
+	public static String getBody(HttpServletRequest request) throws IOException {
 
 		String body = null;
 		StringBuilder stringBuilder = new StringBuilder();

@@ -10,7 +10,9 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -45,6 +47,7 @@ public class SwaggerServlet extends HttpServlet {
 
 	private Swagger swagger = null;
 	private String actionpackage = null;
+	private Set<String> aditionalPackages = new TreeSet<>();
 	private Map<String, IDependency> dependencies = new TreeMap<>();
 	private List<Property> properties = new ArrayList<>();
 	private Map<String, String> manifest = new TreeMap<>();
@@ -91,7 +94,11 @@ public class SwaggerServlet extends HttpServlet {
 			log.error("INIT ERROR: ", e);
 		}
 
-		initialize(config);
+		try {
+			initialize(config);
+		} catch (Exception ex) {
+			throw new ServletException(ex);
+		}
 
 		if (executor == null)
 			executor = Executors
@@ -104,7 +111,7 @@ public class SwaggerServlet extends HttpServlet {
 		}
 	}
 
-	protected void initialize(ServletConfig config) throws ServletException {
+	protected void initialize(ServletConfig config) throws Exception {
 	}
 
 	private static ThreadLocal<SwaggerContext> current = new ThreadLocal<SwaggerContext>();
@@ -141,6 +148,11 @@ public class SwaggerServlet extends HttpServlet {
 		return null;
 	}
 
+	// Used to simplify stack trace
+	public void showPackageErrors(String pkg) {
+		this.aditionalPackages.add(pkg);
+	}
+
 	public static HttpServletRequest getHttpServletRequest() {
 		return current.get().getRequest();
 	}
@@ -171,8 +183,7 @@ public class SwaggerServlet extends HttpServlet {
 		p.setActionName(toCamelCase(p.getMatchingPath().swaggerPath + " " + method));
 
 		Class<?> clazz = Class.forName(actionpackage + "." + p.getActionName());
-		Constructor<?> ctor = clazz.getConstructor();
-		p.setAction((ISwaggerMethod) ctor.newInstance());
+		p.setAction((ISwaggerMethod) newInstance(clazz));
 
 		p.setContext(p.getAction().getContext());
 		p.setService(getService());
@@ -183,10 +194,14 @@ public class SwaggerServlet extends HttpServlet {
 
 		p.setClazzResponse((Class<? extends ISwaggerResponse>) Class.forName(swagger.getInterfacePackage() + "."
 				+ swagger.getInterfaceName() + "$" + p.getActionName() + "Response"));
-		p.setReq(p.getClazzRequest().newInstance());
-		p.setResp(p.getClazzResponse().newInstance());
+		p.setReq(newInstance(p.getClazzRequest()));
+		p.setResp(newInstance(p.getClazzResponse()));
 
 		current.set(p);
+	}
+
+	public <T> T newInstance(Class<T> clazz) throws InstantiationException, IllegalAccessException {
+		return clazz.newInstance();
 	}
 
 	public String toCamelCase(String path) {
@@ -358,8 +373,10 @@ public class SwaggerServlet extends HttpServlet {
 					lr.request = req;
 					lr.response = error;
 					String details = SwaggerUtils.toJson(lr);
-					log.error("HTTP-ERROR: {}, EXCEPTION {}", details,
-							SwaggerUtils.simplifyStackTrace(e, new String[] { this.actionpackage }));
+
+					aditionalPackages.add(actionpackage);
+					log.error("HTTP-ERROR: {}, EXCEPTION {}", details, SwaggerUtils.simplifyStackTrace(e,
+							aditionalPackages.toArray(new String[aditionalPackages.size()])));
 				}
 			} catch (Exception e2) {
 				if (e.getMessage() != null && e.getMessage().contains("Connection reset"))
