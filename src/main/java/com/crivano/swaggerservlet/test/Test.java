@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -60,7 +59,7 @@ public class Test {
 			}
 		}
 
-		TestResponse tr = new TestResponse(null, ss.getService(), request.getRequestURI(), null, false);
+		TestResponse tr = new TestResponse(null, ss.getService(), request.getRequestURI(), false);
 
 		tr.version = ss.getManifestEntries().get("Build-Label");
 		tr.timestamp = ss.getManifestEntries().get("Build-Time");
@@ -92,8 +91,7 @@ public class Test {
 						isPartial = partialMap.get(dep.getService());
 					if (partialMap.containsKey(dep.getUrl()))
 						isPartial = partialMap.get(dep.getUrl());
-					TestResponse tr2 = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(),
-							dep.getResponsable(), isPartial);
+					TestResponse tr2 = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(), isPartial);
 					String ref = dep.getService() + "@" + dep.getUrl();
 
 					long current_time = System.currentTimeMillis();

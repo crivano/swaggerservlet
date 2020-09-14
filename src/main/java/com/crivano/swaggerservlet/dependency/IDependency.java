@@ -12,8 +12,6 @@ public interface IDependency {
 
 	void setCategory(String category);
 
-	String getResponsable();
-
 	boolean isTestable();
 
 	boolean isPartial();

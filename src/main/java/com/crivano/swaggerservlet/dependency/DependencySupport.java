@@ -38,11 +38,6 @@ public abstract class DependencySupport implements IDependency {
 		this.category = category;
 	}
 
-	@Override
-	public String getResponsable() {
-		return null;
-	}
-
 	public boolean isPartial() {
 		return partial;
 	}

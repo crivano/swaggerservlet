@@ -14,7 +14,6 @@ public class TestResponse extends SwaggerError {
 	String version;
 	String timestamp;
 	String url;
-	String responsable;
 	Boolean partial;
 	Boolean available;
 	Boolean status;
@@ -27,11 +26,10 @@ public class TestResponse extends SwaggerError {
 	public TestResponse() {
 	}
 
-	public TestResponse(String category, String service, String url, String responsable, Boolean partial) {
+	public TestResponse(String category, String service, String url, Boolean partial) {
 		this.category = category;
 		this.service = service;
 		this.url = url;
-		this.responsable = responsable;
 		this.partial = partial;
 	}
 
@@ -46,8 +44,7 @@ public class TestResponse extends SwaggerError {
 			properties = new TreeMap<>();
 		properties.put(name,
 				System.getProperty(name,
-						property != null && property.isOptional()
-								? "[default: " + property.getDefaultValue() + "]"
+						property != null && property.isOptional() ? "[default: " + property.getDefaultValue() + "]"
 								: "[undefined]"));
 	}
 
