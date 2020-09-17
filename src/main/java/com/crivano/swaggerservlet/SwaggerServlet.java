@@ -322,6 +322,8 @@ public class SwaggerServlet extends HttpServlet {
 		// request.getMethod().toLowerCase();
 		// Logger loghttp = LoggerFactory.getLogger(loggerPath);
 
+		corsHeaders(request, response);
+		
 		try {
 			prepare(request, response);
 			SwaggerContext prepared = current.get();
@@ -332,7 +334,6 @@ public class SwaggerServlet extends HttpServlet {
 
 			req = injectVariables(request, req);
 
-			corsHeaders(request, response);
 
 			if (isCacheable()) {
 				// String cache = RestUtils.cacheRetrieveJson(getContext(),
