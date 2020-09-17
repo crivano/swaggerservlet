@@ -119,7 +119,7 @@ public class SwaggerCall {
 			try {
 				long timeout = timeoutMilliseconds - (time - dt1);
 				if (timeout < 0L)
-					timeout = 0;
+					timeout = 50; // minimum timeout
 				SwaggerAsyncResponse futureresponse = map.get(system).get(timeout, TimeUnit.MILLISECONDS);
 				// SwaggerException ex = futureresponse.getException();
 				// if (ex != null) {

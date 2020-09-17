@@ -58,7 +58,7 @@ public class SwaggerServlet extends HttpServlet {
 	public String servletContext = null;
 	public static String callContentType;
 
-	static ExecutorService executor = null;
+	public static ExecutorService executor = null;
 
 //	public SwaggerServlet() {
 //		if (instance == null)

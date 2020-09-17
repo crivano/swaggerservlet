@@ -3,25 +3,29 @@ package com.crivano.swaggerservlet.test;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.crivano.swaggerservlet.LogResponse;
 import com.crivano.swaggerservlet.Property;
 import com.crivano.swaggerservlet.Property.Scope;
-import com.crivano.swaggerservlet.SwaggerAsyncResponse;
 import com.crivano.swaggerservlet.SwaggerCall;
+import com.crivano.swaggerservlet.SwaggerCallParameters;
+import com.crivano.swaggerservlet.SwaggerCallStatus;
+import com.crivano.swaggerservlet.SwaggerError.Detail;
+import com.crivano.swaggerservlet.SwaggerMultipleCallResult;
 import com.crivano.swaggerservlet.SwaggerServlet;
 import com.crivano.swaggerservlet.SwaggerUtils;
 import com.crivano.swaggerservlet.dependency.IDependency;
@@ -41,6 +45,10 @@ public class Test {
 		String[] partialValues = request.getParameterValues("partial");
 		boolean skipAll = false;
 		long timeout;
+
+		// Begin counting the time
+		long dt1 = System.currentTimeMillis();
+
 		try {
 			timeout = Long.parseLong(request.getParameter("timeout"));
 		} catch (NumberFormatException e) {
@@ -80,102 +88,157 @@ public class Test {
 		}
 
 		try {
-			try {
-				ss.assertProperties();
+			ss.assertProperties();
 
-				boolean dependenciesOK = true;
-				for (String service : dependencies.keySet()) {
-					IDependency dep = dependencies.get(service);
-					boolean isPartial = dep.isPartial();
-					if (partialMap.containsKey(dep.getService()))
-						isPartial = partialMap.get(dep.getService());
-					if (partialMap.containsKey(dep.getUrl()))
-						isPartial = partialMap.get(dep.getUrl());
-					TestResponse tr2 = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(), isPartial);
-					String ref = dep.getService() + "@" + dep.getUrl();
+			boolean dependenciesOK = true;
+			Map<String, SwaggerCallParameters> mapp = new HashMap<>();
+			Map<String, IDependency> mapt = new HashMap<>();
+			for (String service : dependencies.keySet()) {
+				IDependency dep = dependencies.get(service);
+				String ref = buildRef(dep);
 
-					long current_time = System.currentTimeMillis();
-					long time_left = timeout - current_time + start_time;
-					if (time_left < 0L)
-						time_left = 0L;
-					if (!skipAll && !skip.contains(ref) && (time_left >= dep.getMsMin())) {
-						try {
-							if (dep instanceof SwaggerServletDependency) {
-								StringBuilder sb = new StringBuilder();
-								sb.append("?timeout=");
-								sb.append(time_left);
-								for (String s : skip) {
-									if (sb.length() == 0)
-										sb.append("?");
-									sb.append("&");
-									sb.append("skip=");
-									sb.append(URLEncoder.encode(s, StandardCharsets.UTF_8.name()));
-								}
-								SwaggerAsyncResponse<TestResponse> resp = SwaggerCall
-										.callAsync("test- " + service, null, "GET",
-												dep.getUrl() + "/test" + sb.toString(), null, TestResponse.class)
-										.get(time_left / 2, TimeUnit.MILLISECONDS);
-								TestResponse r = resp.getRespOrThrowException();
-								r.category = dep.getCategory();
-								r.service = dep.getService();
-								r.url = dep.getUrl();
-								r.pass = null;
-								tr2 = r;
-							} else if (dep instanceof TestableDependency) {
-								tr2.available = ((TestableDependency) dep).test();
+				if (!skipAll && !skip.contains(ref)) {
+					if (timeout >= dep.getMsMin()) {
+						// Add to a multiple call
+						if (dep instanceof SwaggerServletDependency) {
+							StringBuilder sb = new StringBuilder();
+							sb.append("?timeout=");
+							sb.append(timeout);
+							for (String s : skip) {
+								if (sb.length() == 0)
+									sb.append("?");
+								sb.append("&");
+								sb.append("skip=");
+								sb.append(URLEncoder.encode(s, StandardCharsets.UTF_8.name()));
 							}
-						} catch (Exception e) {
-							tr2.available = false;
-							SwaggerUtils.buildSwaggerError(request, e, "testing", dep.getService(), null, tr2, null);
-						}
-						addToSkipList(skip, tr2, ref);
-						if (tr2.available != null && !tr2.available) {
-							dependenciesOK = false;
-							if (!isPartial) {
-								tr.available = false;
-								tr.errormsg = tr2.category + ": " + tr2.service + ": " + tr2.errormsg;
-							}
+							mapp.put(service, new SwaggerCallParameters("test- " + service, null, "GET",
+									dep.getUrl() + "/test" + sb.toString(), null, TestResponse.class));
+
+						} else if (dep instanceof TestableDependency) {
+							// Add to a executor for testing
+							mapt.put(service, dep);
+//								 {
+//								tr2.available = ((TestableDependency) dep).test();
 						}
 					} else {
+						// If we are not going to test, than add an skipped response
+						TestResponse tr2 = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(),
+								isPartial(dep, partialMap));
 						tr2.skiped = true;
+						tr.addDependency(tr2);
+						addToSkipList(skip, null, ref);
 					}
-					tr2.partial = isPartial ? true : null;
-					tr2.ms = System.currentTimeMillis() - current_time;
-					tr.addDependency(tr2);
 				}
-				if (tr.available == null)
-					tr.available = ss.test();
-				if (!tr.available) {
-					tr.pass = false;
-					// throw new Exception("Test is failing.");
-				} else
-					tr.pass = true;
-			} catch (Exception e) {
-				tr.available = false;
+			}
+
+			// Add testable dependencies to executor
+			Map<String, Future<TestResponse>> map = new HashMap<>();
+			for (String service : mapt.keySet()) {
+				TestableDependency dep = (TestableDependency) dependencies.get(service);
+				TestResponse tr2 = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(),
+						isPartial(dep, partialMap));
+				map.put(service, SwaggerServlet.executor.submit(new TestAsync(dep, tr2)));
+			}
+
+			// Add SwaggerServlet Dependencies
+			SwaggerMultipleCallResult mcr = SwaggerCall.callMultiple(mapp, timeout);
+			for (SwaggerCallStatus sts : mcr.status) {
+				IDependency dep = dependencies.get(sts.system);
+				TestResponse r;
+				r = (TestResponse) mcr.responses.get(sts.system);
+				if (r == null) {
+					r = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(), isPartial(dep, partialMap));
+					r.pass = null;
+					r.available = false;
+					r.errormsg = sts.errormsg;
+					r.errordetails = new ArrayList<>();
+					Detail det = new Detail();
+					det.stacktrace = sts.stacktrace;
+					r.errordetails.add(det);
+				}
+				r.category = dep.getCategory();
+				r.service = dep.getService();
+				r.url = dep.getUrl();
+				r.partial = isPartial(dep, partialMap);
+				r.ms = sts.miliseconds;
+				tr.addDependency(r);
+				addToSkipList(skip, r, buildRef(dep));
+			}
+
+			// Take the remaining time to wait for testable dependencies
+			for (String service : mapt.keySet()) {
+				long time = System.currentTimeMillis();
+				try {
+					long timeRemaining = timeout - (time - dt1);
+					if (timeRemaining < 0L)
+						timeRemaining = 50; // minimum timeout
+					TestResponse r = map.get(service).get(timeRemaining, TimeUnit.MILLISECONDS);
+					tr.addDependency(r);
+				} catch (Exception ex) {
+					IDependency dep = mapt.get(service);
+					TestResponse r = new TestResponse(dep.getCategory(), dep.getService(), dep.getUrl(),
+							isPartial(dep, partialMap));
+					SwaggerUtils.buildSwaggerError(request, ex, "test", ss.getService(), ss.getUser(), r, null);
+					r.available = false;
+					r.ms = time - dt1;
+					tr.addDependency(r);
+					if (ex instanceof TimeoutException)
+						map.get(service).cancel(true);
+				}
+			}
+
+			// Compute availability
+			for (TestResponse r : tr.dependencies) {
+				if (r.available != null && !r.available) {
+					dependenciesOK = false;
+					if (!r.partial) {
+						tr.available = false;
+						tr.errormsg = r.category + ": " + r.service + ": " + r.errormsg;
+						break;
+					}
+				}
+			}
+
+			if (tr.available == null)
+				tr.available = ss.test();
+			if (!tr.available) {
 				tr.pass = false;
-				SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr, null);
-				log.error("Error testing swaggerservlet", e);
-			}
-			try {
-				if (tr.pass == null || tr.pass == false)
-					response.setStatus(503);
-				SwaggerServlet.corsHeaders(request, response);
-				SwaggerUtils.writeJsonResp(response, tr, "test", ss.getService());
-			} catch (JSONException e) {
-				throw new RuntimeException("error reporting test results", e);
-			}
+			} else
+				tr.pass = true;
 		} catch (Exception e) {
-			LogResponse lr = new LogResponse();
-			lr.method = request.getMethod();
-			lr.path = request.getContextPath() + request.getPathInfo();
-			String details = SwaggerUtils.toJson(lr);
-			log.error("HTTP-ERROR: {}, EXCEPTION", details, e);
+			tr.available = false;
+			tr.pass = false;
+			SwaggerUtils.buildSwaggerError(request, e, "test", ss.getService(), ss.getUser(), tr, null);
+			log.error("Error testing swaggerservlet", e);
 		}
+		tr.ms = System.currentTimeMillis() - dt1;
+		try {
+			if (tr.pass == null || tr.pass == false)
+				response.setStatus(503);
+			SwaggerServlet.corsHeaders(request, response);
+			SwaggerUtils.writeJsonResp(response, tr, "test", ss.getService());
+		} catch (Exception e) {
+			throw new RuntimeException("error reporting test results", e);
+		}
+	}
+
+	private static String buildRef(IDependency dep) {
+		return dep.getService() + "@" + dep.getUrl();
+	}
+
+	private static boolean isPartial(IDependency dep, Map<String, Boolean> partialMap) {
+		boolean isPartial = dep.isPartial();
+
+		if (partialMap.containsKey(dep.getService()))
+			isPartial = partialMap.get(dep.getService());
+		if (partialMap.containsKey(dep.getUrl()))
+			isPartial = partialMap.get(dep.getUrl());
+		return isPartial;
 	}
 
 	private static void addToSkipList(Set<String> skip, TestResponse tr, String ref) {
 		skip.add(ref);
-		if (tr.dependencies == null)
+		if (tr == null || tr.dependencies == null)
 			return;
 		for (TestResponse tr2 : tr.dependencies)
 			addToSkipList(skip, tr2, tr2.service + "@" + tr2.url);

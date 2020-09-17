@@ -7,14 +7,14 @@ public class SwaggerError implements ISwaggerResponse, Serializable {
 	private static final long serialVersionUID = -6440680646287033407L;
 
 	public static class Detail {
-		String context;
-		String service;
-		String stacktrace;
-		boolean presentable;
-		boolean logged;
+		public String context;
+		public String service;
+		public String stacktrace;
+		public boolean presentable;
+		public boolean logged;
 
-		String user;
-		String url;
+		public String user;
+		public String url;
 	}
 
 	public String errormsg;
