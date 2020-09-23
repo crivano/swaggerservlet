@@ -34,6 +34,7 @@ import com.crivano.swaggerservlet.dependency.TestableDependency;
 
 public class Test {
 	private static final long DEFAULT_TIMEOUT_MILLISECONDS = 10000L;
+	private static final long DEFAULT_TIMEOUT_MINUS_MILLISECONDS = 500L;
 	private static final Logger log = LoggerFactory.getLogger(Test.class);
 
 	public static void run(SwaggerServlet ss, Map<String, IDependency> dependencies, List<Property> properties,
@@ -171,7 +172,7 @@ public class Test {
 				try {
 					long timeRemaining = timeout - (time - dt1);
 					if (timeRemaining < 0L)
-						timeRemaining = 50; // minimum timeout
+						timeRemaining = 0; // minimum timeout
 					TestResponse r = map.get(service).get(timeRemaining, TimeUnit.MILLISECONDS);
 					tr.addDependency(r);
 				} catch (Exception ex) {
@@ -214,7 +215,7 @@ public class Test {
 		tr.ms = System.currentTimeMillis() - dt1;
 		try {
 			if (tr.pass == null || tr.pass == false)
-				response.setStatus(503);
+				response.setStatus(242);
 			SwaggerServlet.corsHeaders(request, response);
 			SwaggerUtils.writeJsonResp(response, tr, "test", ss.getService());
 		} catch (Exception e) {

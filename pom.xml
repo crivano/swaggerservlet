@@ -5,9 +5,9 @@
 
 	<groupId>com.crivano</groupId>
 	<artifactId>swaggerservlet</artifactId>
-	<version>1.37.0</version>
+	<version>1.38.0</version>
 	<name>swaggerservlet java library</name>
-	<description>swaggerservlet - MIT Java library</description>
+	<description>A simple Java REST framework</description>
 	<packaging>jar</packaging>
 	<url>https://github.com/crivano/swaggerservlet</url>
 

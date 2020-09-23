@@ -203,7 +203,8 @@ public class SwaggerUtils {
 		}
 
 		if (error.errordetails != null && error.errordetails.size() > 0) {
-			errpresentable = error.errordetails.get(0).presentable;
+			if (!errpresentable)
+				errpresentable = error.errordetails.get(0).presentable;
 		} else {
 			error.errordetails = new ArrayList<>();
 		}
