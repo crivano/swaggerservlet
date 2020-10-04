@@ -358,11 +358,12 @@ public class SwaggerServlet extends HttpServlet {
 				flush(req, resp);
 		} catch (Exception e) {
 			try {
-				int sts = errorCode(e);
+				int sts = errorStatus(e);
 				if (e instanceof SwaggerAuthorizationException)
 					sts = 401;
+				String errorcode = errorCode(e);
 
-				SwaggerError error = SwaggerUtils.writeJsonError(sts, request, response, e, req, resp, getContext(),
+				SwaggerError error = SwaggerUtils.writeJsonError(sts, errorcode, request, response, e, req, resp, getContext(),
 						getService(), getUser(),
 						(e instanceof SwaggerDetailedException) ? ((SwaggerDetailedException) e).status : null);
 				response.getWriter().close();
@@ -440,12 +441,18 @@ public class SwaggerServlet extends HttpServlet {
 		response.getWriter().close();
 	}
 
-	// What error code should we output for this exception?
+	// What error number should we output for this exception?
 	//
-	public int errorCode(Exception e) {
+	public int errorStatus(Exception e) {
 		if (e instanceof SwaggerException)
 			return ((SwaggerException) e).getStatus();
 		return 500;
+	}
+
+	// What error code should we output for this exception?
+	//
+	public String errorCode(Exception e) {
+		return null;
 	}
 
 	// Should this exception be logged?

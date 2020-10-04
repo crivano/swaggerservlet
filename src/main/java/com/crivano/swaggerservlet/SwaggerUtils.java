@@ -168,13 +168,14 @@ public class SwaggerUtils {
 		return gson.toJson(resp);
 	}
 
-	public static SwaggerError writeJsonError(int status, HttpServletRequest request, HttpServletResponse response,
+	public static SwaggerError writeJsonError(int status, String errorcode, HttpServletRequest request, HttpServletResponse response,
 			final Exception e, ISwaggerRequest req, ISwaggerResponse resp, String context, String service, String user,
 			List<SwaggerCallStatus> errorstatus) {
 		SwaggerError error = new SwaggerError();
 
 		try {
 			buildSwaggerError(request, e, context, service, user, error, errorstatus);
+			error.errorcode = errorcode;
 			response.setStatus(status);
 			writeJsonResp(response, error, context, service);
 			return error;
