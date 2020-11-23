@@ -189,16 +189,17 @@ public class Test {
 			}
 
 			// Compute availability
-			for (TestResponse r : tr.dependencies) {
-				if (r.available != null && !r.available) {
-					dependenciesOK = false;
-					if (!r.partial) {
-						tr.available = false;
-						tr.errormsg = r.category + ": " + r.service + ": " + r.errormsg;
-						break;
+			if (tr.dependencies != null)
+				for (TestResponse r : tr.dependencies) {
+					if (r.available != null && !r.available) {
+						dependenciesOK = false;
+						if (!r.partial) {
+							tr.available = false;
+							tr.errormsg = r.category + ": " + r.service + ": " + r.errormsg;
+							break;
+						}
 					}
 				}
-			}
 
 			if (tr.available == null)
 				tr.available = ss.test();

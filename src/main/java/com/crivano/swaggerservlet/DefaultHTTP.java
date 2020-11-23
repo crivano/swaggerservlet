@@ -46,7 +46,7 @@ public class DefaultHTTP implements IHTTP {
 					if (v == null)
 						continue;
 					if (v instanceof Date)
-						v = SwaggerUtils.format((Date) v);
+						v = SwaggerUtils.dateAdapter.format((Date) v);
 					if (v instanceof byte[])
 						v = SwaggerUtils.base64Encode((byte[]) v);
 					sb.append(first ? "" : "&");

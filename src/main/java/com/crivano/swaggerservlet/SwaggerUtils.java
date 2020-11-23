@@ -55,9 +55,12 @@ public class SwaggerUtils {
 			throw new RuntimeException("no stream handler defined");
 		return uploadHandler.upload(fileName, contentType, stream);
 	}
+	
+	public static IDateAdapter dateAdapter = new DefaultDateAdapter();
 
-	public static String ISO_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
-	public static final SimpleDateFormat isoFormatter = new SimpleDateFormat(ISO_FORMAT);
+	public static void setDateAdapter(IDateAdapter dateAdapter) {
+		SwaggerUtils.dateAdapter = dateAdapter;
+	}
 
 	public static Gson gson = new GsonBuilder()
 			.registerTypeHierarchyAdapter(InputStream.class, new InputStreamTypeAdapter())
@@ -89,14 +92,14 @@ public class SwaggerUtils {
 	public static class DateToStringTypeAdapter implements JsonSerializer<Date>, JsonDeserializer<Date> {
 		public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 				throws JsonParseException {
-			return parse(json.getAsString());
+			return dateAdapter.parse(json.getAsString());
 		}
 
 		public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext context) {
-			return new JsonPrimitive(format(src));
+			return new JsonPrimitive(dateAdapter.format(src));
 		}
 	}
-
+	
 	public static String base64Encode(byte[] bytes) {
 		if (bytes == null)
 			return null;
@@ -269,24 +272,6 @@ public class SwaggerUtils {
 			s = sb.toString();
 		}
 		return s;
-	}
-
-	public static String format(Date date) {
-		synchronized (isoFormatter) {
-			return isoFormatter.format(date);
-		}
-	}
-
-	public static Date parse(String date) {
-		if (date == null)
-			return null;
-		try {
-			synchronized (isoFormatter) {
-				return isoFormatter.parse(date);
-			}
-		} catch (ParseException e) {
-			throw new RuntimeException(e);
-		}
 	}
 
 	public static void memCacheStore(String key, byte[] ba) {

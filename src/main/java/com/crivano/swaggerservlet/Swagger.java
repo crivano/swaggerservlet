@@ -425,7 +425,8 @@ public class Swagger {
 		try {
 			field = clazz.getDeclaredField(param);
 		} catch (NoSuchFieldException ex) {
-			throw new Exception("unknown parameter: " + param, ex);
+			SwaggerUtils.log(Swagger.class).debug("unknown parameter: " + param);
+			return null;
 		}
 		field.setAccessible(true);
 		return field.get(model);
@@ -438,7 +439,8 @@ public class Swagger {
 		try {
 			field = clazz.getDeclaredField(param);
 		} catch (NoSuchFieldException ex) {
-			throw new Exception("unknown parameter: " + param, ex);
+			SwaggerUtils.log(Swagger.class).debug("unknown parameter: " + param);
+			return;
 		}
 		Object v = value;
 		if (field.getType() == Long.class)
@@ -446,7 +448,7 @@ public class Swagger {
 		if (field.getType() == Boolean.class)
 			v = new Boolean(value);
 		if (field.getType() == Date.class)
-			v = SwaggerUtils.parse(value);
+			v = SwaggerUtils.dateAdapter.parse(value);
 		if (field.getType().isAssignableFrom(byte[].class))
 			v = SwaggerUtils.base64Decode(value);
 		field.setAccessible(true);

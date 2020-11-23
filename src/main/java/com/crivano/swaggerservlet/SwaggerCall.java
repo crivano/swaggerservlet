@@ -70,7 +70,7 @@ public class SwaggerCall {
 					if (v == null)
 						continue;
 					if (v instanceof Date)
-						v = SwaggerUtils.format((Date) v);
+						v = SwaggerUtils.dateAdapter.format((Date) v);
 					sb.append(first && !url.contains("?") ? "?" : "&");
 					first = false;
 					sb.append(f.getName());

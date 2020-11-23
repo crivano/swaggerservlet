@@ -492,11 +492,11 @@ public class SwaggerServlet extends HttpServlet {
 				InputStream stream = item.openStream();
 				if (item.isFormField()) {
 					String value = Streams.asString(stream);
-					System.out.println("Form field " + name + " with value " + value + " detected.");
+					SwaggerUtils.log(this.getClass()).debug("Form field " + name + " with value " + value + " detected.");
 					if (!swagger.has(req, name))
 						swagger.set(req, name, value);
 				} else {
-					System.out.println("File field " + name + " with file name " + item.getName() + " detected.");
+					SwaggerUtils.log(this.getClass()).debug("File field " + name + " with file name " + item.getName() + " detected.");
 					reqFile.setContenttype(item.getContentType());
 					reqFile.setFilename(item.getName());
 					reqFile.setContent(SwaggerUtils.upload(item.getName(), item.getContentType(), stream));
