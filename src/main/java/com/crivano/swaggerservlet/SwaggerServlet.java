@@ -94,16 +94,16 @@ public class SwaggerServlet extends HttpServlet {
 			log.error("INIT ERROR: ", e);
 		}
 
+		if (executor == null)
+			executor = Executors
+					.newFixedThreadPool(new Integer(getProperty(SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME)));
+
 		try {
 			initialize(config);
 		} catch (Exception ex) {
 			throw new ServletException(ex);
 		}
-
-		if (executor == null)
-			executor = Executors
-					.newFixedThreadPool(new Integer(getProperty(SWAGGERSERVLET_THREADPOOL_SIZE_PROPERTY_NAME)));
-
+		
 		try {
 			assertProperties();
 		} catch (Exception ex) {
