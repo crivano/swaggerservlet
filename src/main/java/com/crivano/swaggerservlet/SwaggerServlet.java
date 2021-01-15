@@ -618,8 +618,8 @@ public class SwaggerServlet extends HttpServlet {
 		sw.loadFromInputStream(is);
 	}
 
-	public static void setExecutor(ExecutorService executor) {
-		executor = executor;
+	public static void setExecutor(ExecutorService newExecutor) {
+		executor = newExecutor;
 	}
 
 	public boolean test() {
