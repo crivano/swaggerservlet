@@ -287,6 +287,10 @@ public class SwaggerServlet extends HttpServlet {
 				throw new ServletException("Invalid swagger-ui resource");
 			InputStream is = this.getClass().getResourceAsStream("/com/crivano/swaggerservlet/dist/" + resource);
 			String sSwagger = SwaggerUtils.convertStreamToString(is);
+			if (sSwagger == null) {
+				response.sendError(404);
+				return;
+			}
 			byte[] ab = sSwagger.getBytes(StandardCharsets.UTF_8);
 			if (resource.endsWith(".html"))
 				response.setContentType("text/html; charset=utf-8");
