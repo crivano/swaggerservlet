@@ -35,22 +35,22 @@ public class SwaggerServletTest extends TestCase {
 	}
 
 	public void testAction_Simple_Success() throws Exception {
-		ISwaggerPetstore.PetPetIdGetRequest req = new ISwaggerPetstore.PetPetIdGetRequest();
-		ISwaggerPetstore.PetPetIdGetResponse resp = new ISwaggerPetstore.PetPetIdGetResponse();
+		ISwaggerPetstore.IPetPetIdGet.Request req = new ISwaggerPetstore.IPetPetIdGet.Request();
+		ISwaggerPetstore.IPetPetIdGet.Response resp = new ISwaggerPetstore.IPetPetIdGet.Response();
 		HttpServletRequest request = mock(HttpServletRequest.class);
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/123");
 
 		ss.prepare(request, null);
-		req = (ISwaggerPetstore.PetPetIdGetRequest) ss.injectVariables(request, req);
+		req = (ISwaggerPetstore.IPetPetIdGet.Request) ss.injectVariables(request, req);
 		ss.run(req, resp);
 
 		assertEquals("white", resp.color);
 	}
 
 	public void testAction_SimpleException_FailWithUnknownId() throws Exception {
-		ISwaggerPetstore.PetPetIdGetRequest req = new ISwaggerPetstore.PetPetIdGetRequest();
-		ISwaggerPetstore.PetPetIdGetResponse resp = new ISwaggerPetstore.PetPetIdGetResponse();
+		ISwaggerPetstore.IPetPetIdGet.Request req = new ISwaggerPetstore.IPetPetIdGet.Request();
+		ISwaggerPetstore.IPetPetIdGet.Response resp = new ISwaggerPetstore.IPetPetIdGet.Response();
 		HttpServletRequest request = mock(HttpServletRequest.class);
 		when(request.getMethod()).thenReturn("GET");
 		when(request.getPathInfo()).thenReturn("/v2/pet/456");
@@ -104,7 +104,7 @@ public class SwaggerServletTest extends TestCase {
 
 		assertEquals("unknown petId", resp.get("errormsg"));
 		// assertEquals("test", errordetails.get("context"));
-		assertEquals("Swagger Petstore", errordetails.get("service"));
+		assertEquals("SwaggerPetstore", errordetails.get("service"));
 		assertNotNull(errordetails.get("stacktrace"));
 	}
 

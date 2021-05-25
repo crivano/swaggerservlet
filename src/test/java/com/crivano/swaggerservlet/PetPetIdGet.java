@@ -1,8 +1,5 @@
 package com.crivano.swaggerservlet;
 
-import com.crivano.swaggerservlet.ISwaggerPetstore.PetPetIdGetRequest;
-import com.crivano.swaggerservlet.ISwaggerPetstore.PetPetIdGetResponse;
-
 public class PetPetIdGet implements ISwaggerPetstore.IPetPetIdGet {
 
 	@Override
@@ -11,8 +8,7 @@ public class PetPetIdGet implements ISwaggerPetstore.IPetPetIdGet {
 	}
 
 	@Override
-	public void run(PetPetIdGetRequest req, PetPetIdGetResponse resp)
-			throws Exception {
+	public void run(Request req, Response resp, SwaggerPetstoreContext ctx) throws Exception {
 		if (req.petId != null && req.petId.equals(123L)) {
 			resp.color = "white";
 		} else {

@@ -170,6 +170,8 @@ public class Swagger {
 		int indent = 0;
 
 		void append(String s) {
+			if (s == null)
+				return;
 			if (s.endsWith("{")) {
 				sb.append(s);
 				tabs();
@@ -249,10 +251,11 @@ public class Swagger {
 					schema.put("type", "object");
 					schema.put("properties", new HashMap<String, Object>());
 				}
-				Map<String, Map<String, Object>> headers = (Map<String, Map<String, Object>>) r200.get("headers");
+				if (r200 != null) {
+					Map<String, Map<String, Object>> headers = (Map<String, Map<String, Object>>) r200.get("headers");
 
-				appendResponseClass(sb, "Response implements ISwaggerResponse", schema, headers);
-
+					appendResponseClass(sb, "Response implements ISwaggerResponse", schema, headers);
+				}
 				// Single method interface
 				sb.append("public void run(Request req, Response resp, ");
 				sb.append(title);
