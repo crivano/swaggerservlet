@@ -2,8 +2,8 @@ package com.crivano.swaggerservlet;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -103,7 +103,7 @@ public class SwaggerServlet extends HttpServlet {
 		} catch (Exception ex) {
 			throw new ServletException(ex);
 		}
-		
+
 		try {
 			assertProperties();
 		} catch (Exception ex) {
@@ -190,10 +190,13 @@ public class SwaggerServlet extends HttpServlet {
 		p.setCacheable(p.getAction() instanceof ISwaggerCacheableMethod);
 
 		p.setClazzRequest((Class<? extends ISwaggerRequest>) Class.forName(swagger.getInterfacePackage() + "."
-				+ swagger.getInterfaceName() + "$" + p.getActionName() + "Request"));
+				+ swagger.getInterfaceName() + "$I" + p.getActionName() + "$Request"));
 
 		p.setClazzResponse((Class<? extends ISwaggerResponse>) Class.forName(swagger.getInterfacePackage() + "."
-				+ swagger.getInterfaceName() + "$" + p.getActionName() + "Response"));
+				+ swagger.getInterfaceName() + "$I" + p.getActionName() + "$Response"));
+
+		p.setClazzContext((Class<? extends ISwaggerApiContext>) Class
+				.forName(swagger.getInterfacePackage() + "." + swagger.getInfoTitle() + "Context"));
 		p.setReq(newInstance(p.getClazzRequest()));
 		p.setResp(newInstance(p.getClazzResponse()));
 
@@ -327,7 +330,7 @@ public class SwaggerServlet extends HttpServlet {
 		// Logger loghttp = LoggerFactory.getLogger(loggerPath);
 
 		corsHeaders(request, response);
-		
+
 		try {
 			prepare(request, response);
 			SwaggerContext prepared = current.get();
@@ -337,7 +340,6 @@ public class SwaggerServlet extends HttpServlet {
 			resp = prepared.getResp();
 
 			req = injectVariables(request, req);
-
 
 			if (isCacheable()) {
 				// String cache = RestUtils.cacheRetrieveJson(getContext(),
@@ -367,8 +369,8 @@ public class SwaggerServlet extends HttpServlet {
 					sts = 401;
 				String errorcode = errorCode(e);
 
-				SwaggerError error = SwaggerUtils.writeJsonError(sts, errorcode, request, response, e, req, resp, getContext(),
-						getService(), getUser(),
+				SwaggerError error = SwaggerUtils.writeJsonError(sts, errorcode, request, response, e, req, resp,
+						getContext(), getService(), getUser(),
 						(e instanceof SwaggerDetailedException) ? ((SwaggerDetailedException) e).status : null);
 				response.getWriter().close();
 
@@ -496,11 +498,13 @@ public class SwaggerServlet extends HttpServlet {
 				InputStream stream = item.openStream();
 				if (item.isFormField()) {
 					String value = Streams.asString(stream);
-					SwaggerUtils.log(this.getClass()).debug("Form field " + name + " with value " + value + " detected.");
+					SwaggerUtils.log(this.getClass())
+							.debug("Form field " + name + " with value " + value + " detected.");
 					if (!swagger.has(req, name))
 						swagger.set(req, name, value);
 				} else {
-					SwaggerUtils.log(this.getClass()).debug("File field " + name + " with file name " + item.getName() + " detected.");
+					SwaggerUtils.log(this.getClass())
+							.debug("File field " + name + " with file name " + item.getName() + " detected.");
 					reqFile.setContenttype(item.getContentType());
 					reqFile.setFilename(item.getName());
 					reqFile.setContent(SwaggerUtils.upload(item.getName(), item.getContentType(), stream));
@@ -609,8 +613,23 @@ public class SwaggerServlet extends HttpServlet {
 
 	public void invoke(SwaggerContext prepared) throws Exception {
 		Class<? extends ISwaggerMethod> clazzAction = prepared.getAction().getClass();
-		clazzAction.getMethod("run", prepared.getClazzRequest(), prepared.getClazzResponse())
-				.invoke(prepared.getAction(), prepared.getReq(), prepared.getResp());
+		Method method = clazzAction.getMethod("run", prepared.getClazzRequest(), prepared.getClazzResponse(),
+				prepared.getClazzContext());
+		try (ISwaggerApiContext ctx = newInstance(prepared.getClazzContext())) {
+			ctx.init(prepared);
+			try {
+				ctx.onTryBegin();
+				method.invoke(prepared.getAction(), prepared.getReq(), prepared.getResp(), ctx);
+				ctx.onTryEnd();
+			} catch (Throwable t) {
+				if (t instanceof Exception)
+					ctx.onCatch((Exception) t);
+				else
+					ctx.onCatch(new Exception(t));
+			} finally {
+				ctx.onFinally();
+			}
+		}
 	}
 
 	public void setAPI(Class clazzInterface) {

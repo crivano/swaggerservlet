@@ -165,19 +165,62 @@ public class Swagger {
 		return info.get("title");
 	}
 
-	public String create(boolean singleLine) {
+	private static class SB {
 		StringBuilder sb = new StringBuilder();
+		int indent = 0;
+
+		void append(String s) {
+			if (s.endsWith("{")) {
+				sb.append(s);
+				tabs();
+				sb.append("\n");
+				indent += 1;
+			} else if (s.endsWith("}")) {
+				indent -= 1;
+				sb.append(s);
+				tabs();
+				sb.append("\n\n");
+			} else if (s.endsWith(";") || s.startsWith("@")) {
+				tabs();
+				sb.append(s);
+				sb.append("\n");
+			} else {
+				sb.append(s);
+			}
+		}
+
+		public String toString() {
+			return sb.toString();
+		}
+
+		public void tabs() {
+			if (indent == 0)
+				return;
+			int idx = sb.lastIndexOf("\n");
+			if (idx == -1)
+				return;
+			try {
+				sb.insert(idx + 1, new String(new char[indent]).replace("\0", "\t"));
+			} catch (Exception e) {
+
+			}
+		}
+
+	}
+
+	public String create(boolean singleLine) {
+		SB sb = new SB();
 		String title = toCamelCase((String) ((Map<String, String>) this.swagger.get("info")).get("title"));
 		sb.append("public interface I");
 		sb.append(title);
-		sb.append(" {\n");
+		sb.append(" {");
 
 		Map<String, Object> definitions = (Map<String, Object>) this.swagger.get("definitions");
 
 		// Object Definitions
 		for (String definitionKey : definitions.keySet()) {
 			Map<String, Object> definition = (Map<String, Object>) definitions.get(definitionKey);
-			appendClass(sb, definitionKey + " implements ISwaggerModel", definition, null);
+			appendResponseClass(sb, definitionKey + " implements ISwaggerModel", definition, null);
 		}
 
 		Map<String, Object> paths = (Map<String, Object>) this.swagger.get("paths");
@@ -188,21 +231,13 @@ public class Swagger {
 				Map<String, Object> func = (Map<String, Object>) path.get(funcKey);
 				String method = toCamelCase(pathKey + " " + funcKey);
 
+				sb.append("public interface I");
+				sb.append(method);
+				sb.append(" extends ISwaggerMethod {");
+
 				// Request
 				List<Map<String, Object>> parameters = (List<Map<String, Object>>) func.get("parameters");
-				sb.append("\tpublic class ");
-				sb.append(method);
-				sb.append("Request implements ISwaggerRequest {\n");
-				if (parameters != null)
-					for (int i = 0; i < parameters.size(); i++) {
-						Map<String, Object> param = parameters.get(i);
-						sb.append("\t\tpublic ");
-						sb.append(toJavaType((String) param.get("type"), (String) param.get("format"), null));
-						sb.append(" ");
-						sb.append(param.get("name"));
-						sb.append(";\n");
-					}
-				sb.append("\t}\n\n");
+				appendRequestClass(sb, "Response implements ISwaggerResponse", parameters);
 
 				// Response
 				Map<String, Object> r200 = getSuccessfulResponse(func);
@@ -216,23 +251,21 @@ public class Swagger {
 				}
 				Map<String, Map<String, Object>> headers = (Map<String, Map<String, Object>>) r200.get("headers");
 
-				appendClass(sb, method + "Response implements ISwaggerResponse", schema, headers);
+				appendResponseClass(sb, "Response implements ISwaggerResponse", schema, headers);
 
 				// Single method interface
-				sb.append("\tpublic interface I");
-				sb.append(method);
-				sb.append(" extends ISwaggerMethod {\n");
-				sb.append("\t\tpublic void run(");
-				sb.append(method);
-				sb.append("Request req, ");
-				sb.append(method);
-				sb.append("Response resp) throws Exception;\n");
-				sb.append("\t}\n\n");
+				sb.append("public void run(Request req, Response resp, ");
+				sb.append(title);
+				sb.append("Context ctx) throws Exception;");
+
+				sb.append("}");
+
 			}
 		}
 		sb.append("}");
+
 		if (singleLine) {
-			return sb.toString().replace("\t", "").replace("\n", "");
+			return sb.toString().replace("", "").replace("", "");
 		}
 		return sb.toString();
 	}
@@ -248,7 +281,104 @@ public class Swagger {
 		return r200;
 	}
 
-	private void appendClass(StringBuilder sb, String className, Map<String, Object> definition,
+	private void appendRequestClass(SB sb, String className, List<Map<String, Object>> parameters) {
+		Map<String, Object> fileRequestParam = null;
+		if (parameters != null)
+			for (int i = 0; i < parameters.size(); i++) {
+				Map<String, Object> param = parameters.get(i);
+				String typeOnly = (String) param.get("type");
+				if (typeOnly != null && "file".equals(typeOnly)) {
+					fileRequestParam = param;
+					break;
+				}
+			}
+
+		sb.append("public static class Request implements ISwaggerRequest"
+				+ (fileRequestParam != null ? ", ISwaggerRequestFile" : "") + " {");
+
+		if (parameters != null)
+			for (int i = 0; i < parameters.size(); i++) {
+				Map<String, Object> param = parameters.get(i);
+
+				if (param != fileRequestParam) {
+					sb.append("public ");
+					sb.append(toJavaType((String) param.get("type"), (String) param.get("format"), null));
+					sb.append(" ");
+					sb.append((String) param.get("name"));
+					sb.append(toDefaultValue((String) param.get("type"), (String) param.get("format"), null));
+					sb.append(";");
+
+				}
+			}
+
+		if (fileRequestParam != null) {
+			sb.append("public String filename;");
+
+			sb.append("public String contenttype = \"application/pdf\";");
+
+			sb.append("public Object content;");
+
+			sb.append("public Map<String, List<String>> headerFields;");
+
+			sb.append("public String getFilename() {");
+
+			sb.append("return filename;");
+
+			sb.append("}");
+
+			sb.append("public void setFilename(String filename) {");
+
+			sb.append("this.filename = filename;");
+
+			sb.append("}");
+
+			sb.append("public String getContenttype() {");
+
+			sb.append("return contenttype;");
+
+			sb.append("}");
+
+			sb.append("public void setContenttype(String contenttype) {");
+
+			sb.append("this.contenttype = contenttype;");
+
+			sb.append("}");
+
+			sb.append("public Object getContent() {");
+
+			sb.append("return content;");
+
+			sb.append("}");
+
+			sb.append("public void setContent(Object content) {");
+
+			sb.append("this.content = content;");
+
+			sb.append("}");
+
+			sb.append("@Override");
+
+			sb.append("public Map<String, List<String>> getHeaderFields() {");
+
+			sb.append("return headerFields;");
+
+			sb.append("}");
+
+			sb.append("@Override");
+
+			sb.append("public void setHeaderFields(Map<String, List<String>> headerFields) {");
+
+			sb.append("this.headerFields = headerFields;");
+
+			sb.append("}");
+
+		}
+
+		sb.append("}");
+		return;
+	}
+
+	private void appendResponseClass(SB sb, String className, Map<String, Object> definition,
 			Map<String, Map<String, Object>> headers) {
 		Map<String, Map<String, Object>> properties = (Map<String, Map<String, Object>>) definition.get("properties");
 		String typeOnly = (String) definition.get("type");
@@ -256,62 +386,96 @@ public class Swagger {
 		boolean payloadResponse = properties != null && properties.containsKey("payload")
 				&& properties.containsKey("contenttype");
 
-		sb.append("\tpublic class ");
+		sb.append("public static class ");
 		sb.append(className + (fileResponse ? ", ISwaggerResponseFile" : "")
 				+ (payloadResponse ? ", ISwaggerResponsePayload" : ""));
-		sb.append(" {\n");
+		sb.append(" {");
 
 		if (fileResponse) {
-			sb.append("\t\tpublic String contenttype");
+			sb.append("public String contenttype");
 			if (headers != null) {
 				String contenttype = headers.get("Content-Type") == null ? null
 						: (String) headers.get("Content-Type").get("description");
 				if (contenttype != null)
 					sb.append(" = \"" + contenttype + "\"");
 			}
-			sb.append(";\n");
-			sb.append("\t\tpublic String contentdisposition");
+			sb.append(";");
+
+			sb.append("public String contentdisposition");
 			if (headers != null) {
 				String contentdisposition = headers.get("Content-Disposition") == null ? null
 						: (String) headers.get("Content-Disposition").get("description");
 				if (contentdisposition != null)
 					sb.append(" = \"" + contentdisposition + "\"");
 			}
-			sb.append(";\n");
-			sb.append("\t\tpublic Long contentlength;\n");
-			sb.append("\t\tpublic InputStream inputstream;\n");
-			sb.append("\t\tpublic Map<String, List<String>> headerFields;\n\n");
+			sb.append(";");
 
-			sb.append("\t\tpublic String getContenttype() {\n");
-			sb.append("\t\t\treturn contenttype;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic void setContenttype(String contenttype) {\n");
-			sb.append("\t\t\tthis.contenttype = contenttype;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic String getContentdisposition() {\n");
-			sb.append("\t\t\treturn contentdisposition;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic void setContentdisposition(String contentdisposition) {\n");
-			sb.append("\t\t\tthis.contentdisposition = contentdisposition;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic Long getContentlength() {\n");
-			sb.append("\t\t\treturn contentlength;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic void setContentlength(Long contentlength) {\n");
-			sb.append("\t\t\tthis.contentlength = contentlength;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic InputStream getInputstream() {\n");
-			sb.append("\t\t\treturn inputstream;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic void setInputstream(InputStream inputstream) {\n");
-			sb.append("\t\t\tthis.inputstream = inputstream;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic Map<String, List<String>> getHeaderFields() {\n");
-			sb.append("\t\t\treturn headerFields;\n");
-			sb.append("\t\t}\n");
-			sb.append("\t\tpublic void setHeaderFields(Map<String, List<String>> headerFields) {\n");
-			sb.append("\t\t\tthis.headerFields = headerFields;\n");
-			sb.append("\t\t}\n");
+			sb.append("public Long contentlength;");
+
+			sb.append("public InputStream inputstream;");
+
+			sb.append("public Map<String, List<String>> headerFields;");
+
+			sb.append("public String getContenttype() {");
+
+			sb.append("return contenttype;");
+
+			sb.append("}");
+
+			sb.append("public void setContenttype(String contenttype) {");
+
+			sb.append("this.contenttype = contenttype;");
+
+			sb.append("}");
+
+			sb.append("public String getContentdisposition() {");
+
+			sb.append("return contentdisposition;");
+
+			sb.append("}");
+
+			sb.append("public void setContentdisposition(String contentdisposition) {");
+
+			sb.append("this.contentdisposition = contentdisposition;");
+
+			sb.append("}");
+
+			sb.append("public Long getContentlength() {");
+
+			sb.append("return contentlength;");
+
+			sb.append("}");
+
+			sb.append("public void setContentlength(Long contentlength) {");
+
+			sb.append("this.contentlength = contentlength;");
+
+			sb.append("}");
+
+			sb.append("public InputStream getInputstream() {");
+
+			sb.append("return inputstream;");
+
+			sb.append("}");
+
+			sb.append("public void setInputstream(InputStream inputstream) {");
+
+			sb.append("this.inputstream = inputstream;");
+
+			sb.append("}");
+
+			sb.append("public Map<String, List<String>> getHeaderFields() {");
+
+			sb.append("return headerFields;");
+
+			sb.append("}");
+
+			sb.append("public void setHeaderFields(Map<String, List<String>> headerFields) {");
+
+			sb.append("this.headerFields = headerFields;");
+
+			sb.append("}");
+
 		} else if (properties != null) {
 			for (String propertyKey : properties.keySet()) {
 				Map<String, Object> property = (Map<String, Object>) properties.get(propertyKey);
@@ -321,7 +485,7 @@ public class Swagger {
 					property = swaggerGetDefinition(ref);
 					typename = swaggerGetDefinitionName(ref);
 				}
-				sb.append("\t\tpublic ");
+				sb.append("public ");
 				String type = (String) property.get("type");
 				String format = (String) property.get("format");
 				if ("array".equals(type)) {
@@ -340,10 +504,13 @@ public class Swagger {
 				sb.append(toJavaType(type, format, typename));
 				sb.append(" ");
 				sb.append(propertyKey);
-				sb.append(";\n");
+				sb.append(toDefaultValue(type, format, typename));
+				sb.append(";");
+
 			}
 		}
-		sb.append("\t}\n\n");
+		sb.append("}");
+
 		return;
 	}
 
@@ -377,6 +544,17 @@ public class Swagger {
 			return "List<" + typename + ">";
 		default:
 			return type;
+		}
+	}
+
+	private String toDefaultValue(String type, String format, String typename) {
+		if (type == null)
+			return "";
+		switch (type) {
+		case "array":
+			return " = new ArrayList<>()";
+		default:
+			return "";
 		}
 	}
 

@@ -14,6 +14,7 @@ public class SwaggerContext {
 	private Path matchingPath;
 	private Class<? extends ISwaggerRequest> clazzRequest;
 	private Class<? extends ISwaggerResponse> clazzResponse;
+	private Class<? extends ISwaggerApiContext> clazzContext;
 	private ISwaggerRequest req;
 	private ISwaggerResponse resp;
 	private HttpServletRequest request;
@@ -116,5 +117,13 @@ public class SwaggerContext {
 
 	public void setResponse(HttpServletResponse response) {
 		this.response = response;
+	}
+
+	public Class<? extends ISwaggerApiContext> getClazzContext() {
+		return clazzContext;
+	}
+
+	public void setClazzContext(Class<? extends ISwaggerApiContext> clazzContext) {
+		this.clazzContext = clazzContext;
 	}
 }
