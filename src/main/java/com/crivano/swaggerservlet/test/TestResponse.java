@@ -7,6 +7,7 @@ import java.util.TreeMap;
 
 import com.crivano.swaggerservlet.Property;
 import com.crivano.swaggerservlet.SwaggerError;
+import com.crivano.swaggerservlet.SwaggerServlet;
 
 public class TestResponse extends SwaggerError {
 	String category;
@@ -39,18 +40,36 @@ public class TestResponse extends SwaggerError {
 		dependencies.add(tr);
 	}
 
-	public void addProperty(String name, Property property) {
+	public void addProperty(String name, Property property, SwaggerServlet ss) {
 		if (properties == null)
 			properties = new TreeMap<>();
+		
+		String propertyValue  = null;
+		try {
+			if (name != null)
+				propertyValue = ss.getProperty("/" + name);
+		} catch (Exception e) {
+			propertyValue = null;
+		}
+
 		properties.put(name,
-				System.getProperty(name,
-						property != null && property.isOptional() ? "[default: " + property.getDefaultValue() + "]"
-								: "[undefined]"));
+				propertyValue != null && !propertyValue.equals(property.getDefaultValue()) ? propertyValue
+						: property != null && property.isOptional() ? "[default: " + property.getDefaultValue() + "]"
+								: "[undefined]");
 	}
 
-	public void addPrivateProperty(String name) {
+	public void addPrivateProperty(String name, SwaggerServlet ss) {
 		if (properties == null)
 			properties = new TreeMap<>();
-		properties.put(name, System.getProperty(name) != null ? "[defined]" : "[undefined]");
+		
+		String propertyValue  = null;
+		try {
+			if (name != null)
+				propertyValue = ss.getProperty("/" + name);
+		} catch (Exception e) {
+			propertyValue = null;
+		}
+		
+		properties.put(name, propertyValue != null ? "[defined]" : "[undefined]");
 	}
 }

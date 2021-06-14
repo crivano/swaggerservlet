@@ -78,14 +78,14 @@ public class Test {
 
 		for (Property p : properties) {
 			if (p.getScope() == Scope.PUBLIC)
-				tr.addProperty(p.getName(), ss.getDefinedProperty(p.getName()));
+				tr.addProperty(p.getName(), ss.getDefinedProperty(p.getName()),ss);
 			else if (p.getScope() == Scope.RESTRICTED) {
 				if (auth)
-					tr.addProperty(p.getName(), ss.getDefinedProperty(p.getName()));
+					tr.addProperty(p.getName(), ss.getDefinedProperty(p.getName()),ss);
 				else
-					tr.addPrivateProperty(p.getName());
+					tr.addPrivateProperty(p.getName(),ss);
 			} else if (p.getScope() == Scope.PRIVATE)
-				tr.addPrivateProperty(p.getName());
+				tr.addPrivateProperty(p.getName(),ss);
 		}
 
 		try {
