@@ -197,16 +197,15 @@ public class Test {
 							tr.available = false;
 							tr.errormsg = r.category + ": " + r.service + ": " + r.errormsg;
 							break;
+						} else {
+							tr.partial = true;
 						}
 					}
 				}
 
 			if (tr.available == null)
 				tr.available = ss.test();
-			if (!tr.available) {
-				tr.pass = false;
-			} else
-				tr.pass = true;
+			tr.pass = tr.available;
 		} catch (Exception e) {
 			tr.available = false;
 			tr.pass = false;

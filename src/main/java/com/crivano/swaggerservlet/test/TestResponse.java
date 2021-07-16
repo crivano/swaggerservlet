@@ -36,6 +36,7 @@ public class TestResponse extends SwaggerError {
 	public void addDependency(TestResponse tr) {
 		if (dependencies == null)
 			dependencies = new ArrayList<>();
+		tr.pass = null;
 		dependencies.add(tr);
 	}
 
