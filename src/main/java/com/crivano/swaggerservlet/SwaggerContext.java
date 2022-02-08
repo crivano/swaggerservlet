@@ -15,6 +15,7 @@ public class SwaggerContext {
 	private Class<? extends ISwaggerRequest> clazzRequest;
 	private Class<? extends ISwaggerResponse> clazzResponse;
 	private Class<? extends ISwaggerApiContext> clazzContext;
+	private Class<? extends ISwaggerApiContext> subclazzContext;
 	private ISwaggerRequest req;
 	private ISwaggerResponse resp;
 	private HttpServletRequest request;
@@ -125,5 +126,13 @@ public class SwaggerContext {
 
 	public void setClazzContext(Class<? extends ISwaggerApiContext> clazzContext) {
 		this.clazzContext = clazzContext;
+	}
+
+	public Class<? extends ISwaggerApiContext> getSubclazzContext() {
+		return subclazzContext;
+	}
+
+	public void setSubclazzContext(Class<? extends ISwaggerApiContext> subclazzContext) {
+		this.subclazzContext = subclazzContext;
 	}
 }

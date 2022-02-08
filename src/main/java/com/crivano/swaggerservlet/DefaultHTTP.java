@@ -104,6 +104,10 @@ public class DefaultHTTP implements IHTTP {
 		}
 
 		String respString = convertStreamToString(con.getInputStream());
+		
+		if (respString.startsWith("["))
+			respString = "{list:" + respString + "}";
+		
 		T resp = (T) SwaggerUtils.fromJson(respString, clazzResp);
 		return resp;
 	}

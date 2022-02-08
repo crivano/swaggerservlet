@@ -55,6 +55,8 @@ public class SwaggerServlet extends HttpServlet {
 	private String authorization = null;
 	private String authorizationToProperties = null;
 
+	private Class<? extends ISwaggerApiContext> classApiContext;
+
 	public String servletContext = null;
 	public static String callContentType;
 
@@ -195,6 +197,7 @@ public class SwaggerServlet extends HttpServlet {
 		p.setClazzResponse((Class<? extends ISwaggerResponse>) Class.forName(swagger.getInterfacePackage() + "."
 				+ swagger.getInterfaceName() + "$I" + p.getActionName() + "$Response"));
 
+		p.setSubclazzContext(getApiContextClass());
 		p.setClazzContext((Class<? extends ISwaggerApiContext>) Class
 				.forName(swagger.getInterfacePackage() + "." + swagger.getInfoTitle() + "Context"));
 		p.setReq(newInstance(p.getClazzRequest()));
@@ -250,6 +253,17 @@ public class SwaggerServlet extends HttpServlet {
 
 	public void setActionPackage(String ap) {
 		this.actionpackage = ap;
+	}
+
+	public Class<? extends ISwaggerApiContext> getApiContextClass() throws ClassNotFoundException {
+		if (classApiContext == null)
+			classApiContext = (Class<? extends ISwaggerApiContext>) Class
+					.forName(swagger.getInterfacePackage() + "." + swagger.getInfoTitle() + "Context");
+		return classApiContext;
+	}
+
+	public void setApiContextClass(Class<? extends ISwaggerApiContext> classApiContext) {
+		this.classApiContext = classApiContext;
 	}
 
 	@Override
@@ -615,7 +629,7 @@ public class SwaggerServlet extends HttpServlet {
 		Class<? extends ISwaggerMethod> clazzAction = prepared.getAction().getClass();
 		Method method = clazzAction.getMethod("run", prepared.getClazzRequest(), prepared.getClazzResponse(),
 				prepared.getClazzContext());
-		try (ISwaggerApiContext ctx = newInstance(prepared.getClazzContext())) {
+		try (ISwaggerApiContext ctx = newInstance(prepared.getSubclazzContext())) {
 			ctx.init(prepared);
 			try {
 				ctx.onTryBegin();
