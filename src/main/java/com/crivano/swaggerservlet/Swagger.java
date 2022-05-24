@@ -628,6 +628,8 @@ public class Swagger {
 			v = new Long(value);
 		if (field.getType() == Boolean.class)
 			v = new Boolean(value);
+		if (field.getType() == Double.class)
+			v = new Double(value);
 		if (field.getType() == Date.class)
 			v = SwaggerUtils.dateAdapter.parse(value);
 		if (field.getType().isAssignableFrom(byte[].class))
