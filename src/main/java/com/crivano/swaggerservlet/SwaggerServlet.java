@@ -511,7 +511,7 @@ public class SwaggerServlet extends HttpServlet {
 				String name = item.getFieldName();
 				InputStream stream = item.openStream();
 				if (item.isFormField()) {
-					String value = Streams.asString(stream);
+					String value = Streams.asString(stream, StandardCharsets.UTF_8.toString());
 					SwaggerUtils.log(this.getClass())
 							.debug("Form field " + name + " with value " + value + " detected.");
 					if (!swagger.has(req, name))
