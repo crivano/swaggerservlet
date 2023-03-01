@@ -189,12 +189,15 @@ public class Test {
 			}
 
 			// Compute availability
+			tr.available = true;
 			if (tr.dependencies != null)
 				for (TestResponse r : tr.dependencies) {
+					r.pass = null;
 					if (r.available != null && !r.available) {
 						dependenciesOK = false;
 						if (!r.partial) {
 							tr.available = false;
+							tr.partial = false;
 							tr.errormsg = r.category + ": " + r.service + ": " + r.errormsg;
 							break;
 						} else {
@@ -203,8 +206,6 @@ public class Test {
 					}
 				}
 
-			if (tr.available == null)
-				tr.available = ss.test();
 			tr.pass = tr.available;
 		} catch (Exception e) {
 			tr.available = false;
@@ -215,7 +216,7 @@ public class Test {
 		tr.ms = System.currentTimeMillis() - dt1;
 		try {
 			if (tr.pass == null || tr.pass == false)
-				response.setStatus(242);
+				response.setStatus(tr.partial ? 243 : 242);
 			SwaggerServlet.corsHeaders(request, response);
 			SwaggerUtils.writeJsonResp(response, tr, "test", ss.getService());
 		} catch (Exception e) {

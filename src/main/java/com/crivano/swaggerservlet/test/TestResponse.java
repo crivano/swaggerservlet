@@ -17,6 +17,7 @@ public class TestResponse extends SwaggerError {
 	String url;
 	Boolean partial;
 	Boolean available;
+	Boolean partiallyavailable;
 	Boolean status;
 	Boolean pass;
 	Boolean skiped;
