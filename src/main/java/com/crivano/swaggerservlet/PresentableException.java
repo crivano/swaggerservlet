@@ -9,6 +9,10 @@ public class PresentableException extends SwaggerDetailedException implements IP
 		super(string);
 	}
 
+	public PresentableException(String string, int code) {
+		super(string, code);
+	}
+
 	public PresentableException(String string, Throwable cause) {
 		super(string, cause);
 	}

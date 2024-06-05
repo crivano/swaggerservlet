@@ -499,45 +499,49 @@ public class SwaggerServlet extends HttpServlet {
 		SwaggerContext prepared = current.get();
 
 		// Inject file parameters
-		if (req instanceof ISwaggerRequestFile && ServletFileUpload.isMultipartContent(request)) {
+		if (req instanceof ISwaggerRequestFile) {
 			ISwaggerRequestFile reqFile = (ISwaggerRequestFile) req;
-			// Create a new file upload handler
-			ServletFileUpload upload = new ServletFileUpload();
+			if (ServletFileUpload.isMultipartContent(request)) {
+				// Create a new file upload handler
+				ServletFileUpload upload = new ServletFileUpload();
 
-			// Parse the request
-			FileItemIterator iter = upload.getItemIterator(request);
-			while (iter.hasNext()) {
-				FileItemStream item = iter.next();
-				String name = item.getFieldName();
-				InputStream stream = item.openStream();
-				if (item.isFormField()) {
-					String value = Streams.asString(stream, StandardCharsets.UTF_8.toString());
-					SwaggerUtils.log(this.getClass())
-							.debug("Form field " + name + " with value " + value + " detected.");
-					if (!swagger.has(req, name))
-						swagger.set(req, name, value);
-				} else {
-					SwaggerUtils.log(this.getClass())
-							.debug("File field " + name + " with file name " + item.getName() + " detected.");
-					reqFile.setContenttype(item.getContentType());
-					reqFile.setFilename(item.getName());
-					reqFile.setContent(SwaggerUtils.upload(item.getName(), item.getContentType(), stream));
+				// Parse the request
+				FileItemIterator iter = upload.getItemIterator(request);
+				while (iter.hasNext()) {
+					FileItemStream item = iter.next();
+					String name = item.getFieldName();
+					InputStream stream = item.openStream();
+					if (item.isFormField()) {
+						String value = Streams.asString(stream);
+						SwaggerUtils.log(this.getClass())
+								.debug("Form field " + name + " with value " + value + " detected.");
+						if (!swagger.has(req, name))
+							swagger.set(req, name, value);
+					} else {
+						SwaggerUtils.log(this.getClass())
+								.debug("File field " + name + " with file name " + item.getName() + " detected.");
+						reqFile.setContenttype(item.getContentType());
+						reqFile.setFilename(item.getName());
+						reqFile.setContent(SwaggerUtils.upload(item.getName(), item.getContentType(), stream));
 
-					Enumeration<String> headerNames = request.getHeaderNames();
-					if (headerNames != null) {
-						Map<String, List<String>> headerFields = new HashMap<>();
-						while (headerNames.hasMoreElements()) {
-							String headerName = headerNames.nextElement();
-							if (headerFields.get(headerName) == null)
-								headerFields.put(headerName, new ArrayList<String>());
-							headerFields.get(headerName).add(request.getHeader(headerName));
+						Enumeration<String> headerNames = request.getHeaderNames();
+						if (headerNames != null) {
+							Map<String, List<String>> headerFields = new HashMap<>();
+							while (headerNames.hasMoreElements()) {
+								String headerName = headerNames.nextElement();
+								if (headerFields.get(headerName) == null)
+									headerFields.put(headerName, new ArrayList<String>());
+								headerFields.get(headerName).add(request.getHeader(headerName));
+							}
+							reqFile.setHeaderFields(headerFields);
 						}
-						reqFile.setHeaderFields(headerFields);
 					}
 				}
+			} else {
+				reqFile.setContent( request.getInputStream());
 			}
 		}
-
+		
 		// Inject JSON body parameters
 		try {
 			if (request.getContentType() != null && request.getContentType().startsWith("application/json")) {

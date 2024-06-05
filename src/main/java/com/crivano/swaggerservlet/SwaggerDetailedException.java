@@ -5,9 +5,15 @@ import java.util.List;
 @SuppressWarnings("serial")
 public class SwaggerDetailedException extends Exception {
 	List<SwaggerCallStatus> status;
+	int code = 500;
 
 	public SwaggerDetailedException(String string) {
 		super(string);
+	}
+
+	public SwaggerDetailedException(String string, int code) {
+		super(string);
+		this.code = code;
 	}
 
 	public SwaggerDetailedException(Throwable cause) {

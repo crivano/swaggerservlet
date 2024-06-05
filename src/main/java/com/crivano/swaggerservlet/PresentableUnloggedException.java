@@ -10,6 +10,10 @@ public class PresentableUnloggedException extends SwaggerDetailedException
 		super(string);
 	}
 
+	public PresentableUnloggedException(String string, int code) {
+		super(string, code);
+	}
+
 	public PresentableUnloggedException(String string, List<SwaggerCallStatus> status) {
 		super(string, status);
 	}
